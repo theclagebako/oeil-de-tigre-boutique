@@ -10,5 +10,6 @@ window.APP_CONFIG = {
   WHATSAPP_NUMBER: "243818616951",
   CURRENCY_LABEL: "USD",
   CDF_PER_USD: 2850,
-  DELIVERY_AREA: "Butembo (à confirmer)"
+  DELIVERY_AREA: "À confirmer",
+  HERO_IMAGE_URL: ""
 };
