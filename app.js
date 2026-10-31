@@ -2,7 +2,14 @@
   "use strict";
   const cfg = window.APP_CONFIG || {};
   const $ = (id) => document.getElementById(id);
-  const money = (value) => `${new Intl.NumberFormat("fr-FR").format(Number(value) || 0)} ${cfg.CURRENCY_LABEL || "FC"}`;
+  const money = (value) => {
+    const usd = Number(value) || 0;
+    const usdText = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "USD" }).format(usd);
+    const rate = Number(cfg.CDF_PER_USD) || 2850;
+    const cdfText = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(usd * rate) + " CDF";
+    return `${usdText} · env. ${cdfText}`;
+  };
+  const stockLabel = (stock) => Number(stock) <= 0 ? "Épuisé" : Number(stock) <= 3 ? `Plus que ${stock} en stock` : "En stock";
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_URL.includes("TON-PROJET") &&
     !cfg.SUPABASE_ANON_KEY.includes("COLLE_ICI") &&
@@ -56,8 +63,8 @@
           <h3>${safeText(p.name)}</h3>
           <p class="product-description">${safeText(p.description || "Un bracelet élégant pour votre quotidien.")}</p>
           <div class="product-bottom">
-            <div><div class="price">${money(p.price)}</div><div class="stock">${p.stock > 0 ? `${p.stock} disponible(s)` : "Disponible sur demande"}</div></div>
-            <button class="button button-dark" data-order="${safeText(p.id)}">Commander</button>
+            <div><div class="price">${money(p.price)}</div><div class="stock">${stockLabel(p.stock)}</div></div>
+            <button class="button button-dark" data-order="${safeText(p.id)}" ${Number(p.stock) <= 0 ? "disabled" : ""}>${Number(p.stock) <= 0 ? "Épuisé" : "Commander"}</button>
           </div>
         </div>
       </article>`).join("");
@@ -80,8 +87,8 @@
     $("detailProductName").textContent = product.name;
     $("detailProductDescription").textContent = product.description || "Un bracelet élégant pour votre quotidien.";
     $("detailProductPrice").textContent = money(product.price);
-    $("detailProductStock").textContent = product.stock > 0 ? `${product.stock} disponible(s)` : "Disponible sur demande";
-    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 20)));
+    $("detailProductStock").textContent = stockLabel(product.stock);
+    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 1)));\n    $("detailOrderQuantity").disabled = Number(product.stock) <= 0;\n    $("detailOrderSubmit").disabled = Number(product.stock) <= 0;
     $("detailOrderQuantity").value = "1";
     $("detailMainImage").src = images[0] || "";
     $("detailMainImage").alt = product.name;
@@ -113,7 +120,7 @@
     if (!db || !detailProduct) { feedback("detailOrderFeedback", "Produit indisponible. Actualisez la page.", true); return; }
     const quantity = Number($("detailOrderQuantity").value);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) { feedback("detailOrderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return; }
-    if (detailProduct.stock > 0 && quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
+    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé pour le moment.", true); return; }\n    if (quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
     const order = {
       customer_name: $("detailCustomerName").value.trim(),
       customer_phone: $("detailCustomerPhone").value.trim(),
@@ -167,12 +174,28 @@
       $("productGrid").innerHTML = `<div class="empty-state">La boutique est prête. Pour afficher les produits, configurez les identifiants Supabase dans <strong>config.js</strong> et exécutez le script SQL fourni.</div>`;
       return;
     }
-    const { data, error } = await db.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false });
-    if (error) {
-      $("productGrid").innerHTML = `<div class="empty-state">Impossible de charger la collection. Vérifiez la configuration Supabase et les règles SQL.</div>`;
-      console.error(error); return;
+    const grid = $("productGrid");
+    grid.innerHTML = Array.from({length: 3}, () => '<div class="loading-card skeleton-card" aria-hidden="true"></div>').join("");
+    let result = null, lastError = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        result = await Promise.race([
+          db.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Délai dépassé")), 10000))
+        ]);
+        if (!result.error) break;
+        lastError = result.error;
+      } catch (err) { lastError = err; }
+      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 700));
     }
-    products = (data || []).map(product => ({ ...product, price: Number(product.price) })); renderProducts(); renderOrderOptions();
+    if (!result || result.error || lastError) {
+      console.error(lastError || result?.error);
+      grid.innerHTML = '<div class="empty-state"><strong>Connexion lente ou indisponible.</strong><p>Vérifiez Internet puis réessayez, ou demandez notre catalogue sur WhatsApp.</p><button class="button button-orange" id="retryCatalog">Réessayer</button> <a class="button button-outline" href="https://wa.me/' + (cfg.WHATSAPP_NUMBER || "243818616951") + '" target="_blank" rel="noopener">WhatsApp</a></div>';
+      $("retryCatalog").addEventListener("click", loadProducts);
+      return;
+    }
+    products = (result.data || []).map(product => ({ ...product, price: Number(product.price) }));
+    renderProducts(); renderOrderOptions();
   }
   function openOrder(productId = "") {
     if (!db) { toast("La boutique doit d'abord être connectée à Supabase."); return; }
@@ -187,7 +210,7 @@
     const product = products.find(p => p.id === $("orderProduct").value);
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
-    if (product.stock > 0 && quantity > product.stock) {
+    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé pour le moment.", true); return; }\n    if (quantity > product.stock) {
       feedback("orderFeedback", `Stock insuffisant : ${product.stock} pièce(s) disponible(s).`, true); return;
     }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
