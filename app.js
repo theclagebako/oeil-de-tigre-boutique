@@ -83,6 +83,8 @@
     const product = products.find(p => String(p.id) === String(productId));
     if (!product) return;
     detailProduct = product;
+    const floatingWhatsApp = $("floatingWhatsApp");
+    if (floatingWhatsApp) floatingWhatsApp.href = "https://wa.me/" + (cfg.WHATSAPP_NUMBER || "243818616951") + "?text=" + encodeURIComponent("Bonjour, je souhaite des informations sur " + product.name + ".");
     const images = productImages(product);
     $("detailProductName").textContent = product.name;
     $("detailProductDescription").textContent = product.description || "Un bracelet élégant pour votre quotidien.";
