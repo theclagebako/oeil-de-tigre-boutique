@@ -2,7 +2,6 @@
   "use strict";
   const cfg = window.APP_CONFIG || {};
   const $ = (id) => document.getElementById(id);
-  const FIXED_PRODUCT_PRICE = 5;
   const money = (value) => `${new Intl.NumberFormat("fr-FR").format(Number(value) || 0)} ${cfg.CURRENCY_LABEL || "FC"}`;
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_URL.includes("TON-PROJET") &&
@@ -75,7 +74,7 @@
       $("productGrid").innerHTML = `<div class="empty-state">Impossible de charger la collection. Vérifiez la configuration Supabase et les règles SQL.</div>`;
       console.error(error); return;
     }
-    products = (data || []).map(product => ({ ...product, price: FIXED_PRODUCT_PRICE })); renderProducts(); renderOrderOptions();
+    products = (data || []).map(product => ({ ...product, price: Number(product.price) })); renderProducts(); renderOrderOptions();
   }
   function openOrder(productId = "") {
     if (!db) { toast("La boutique doit d'abord être connectée à Supabase."); return; }
@@ -170,7 +169,7 @@
     const list = $("adminProductList");
     const { data, error } = await db.from("products").select("*").order("created_at", { ascending: false });
     if (error) { list.innerHTML = `<p class="muted">Erreur de chargement des produits.</p>`; return; }
-    const fixedPriceProducts = (data || []).map(product => ({ ...product, price: FIXED_PRODUCT_PRICE }));
+    const fixedPriceProducts = (data || []).map(product => ({ ...product, price: Number(product.price) }));
     list.innerHTML = fixedPriceProducts.length ? fixedPriceProducts.map(p => `
       <div class="admin-list-item">
         <div class="admin-list-main">${safeImageUrl(p.image_url) ? `<img src="${safeImageUrl(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
@@ -182,7 +181,7 @@
   }
   function editProduct(p) {
     $("editProductId").value = p.id; $("productName").value = p.name;
-    $("productDescription").value = p.description || ""; $("productPrice").value = FIXED_PRODUCT_PRICE;
+    $("productDescription").value = p.description || ""; $("productPrice").value = p.price;
     $("productStock").value = p.stock; $("productActive").checked = p.is_active;
     $("productEditorTitle").textContent = "Modifier le produit";
     $("saveProductButton").textContent = "Enregistrer les modifications";
@@ -190,7 +189,7 @@
   }
   function resetProductForm() {
     $("productForm").reset(); $("editProductId").value = "";
-    $("productActive").checked = true; $("productStock").value = 0; $("productPrice").value = FIXED_PRODUCT_PRICE;
+    $("productActive").checked = true; $("productStock").value = 0; $("productPrice").value = 5;
     $("productEditorTitle").textContent = "Ajouter un produit";
     $("saveProductButton").textContent = "Enregistrer le produit";
     feedback("productFeedback", "");
@@ -218,7 +217,7 @@
       const record = {
         name: $("productName").value.trim(),
         description: $("productDescription").value.trim(),
-        price: FIXED_PRODUCT_PRICE,
+        price: Number($("productPrice").value),
         stock: Number($("productStock").value),
         is_active: $("productActive").checked
       };
@@ -269,7 +268,17 @@
   $("year").textContent = new Date().getFullYear();
   // Nav mobile
   const nav = document.querySelector(".main-nav");
-  $("menuToggle").addEventListener("click", () => nav.classList.toggle("open"));
-  nav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => nav.classList.remove("open")));
+  const menuToggle = $("menuToggle");
+  function setMenuOpen(open) {
+    nav.classList.toggle("open", open);
+    menuToggle.setAttribute("aria-expanded", String(open));
+    menuToggle.setAttribute("aria-label", open ? "Fermer le menu" : "Ouvrir le menu");
+  }
+  menuToggle.addEventListener("click", () => setMenuOpen(!nav.classList.contains("open")));
+  nav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => setMenuOpen(false)));
+  document.addEventListener("keydown", e => { if (e.key === "Escape") setMenuOpen(false); });
+  document.addEventListener("click", e => {
+    if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
+  });
   loadProducts();
 })();
