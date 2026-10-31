@@ -46,7 +46,7 @@
           <p id="detailProductDescription" class="muted"></p>
           <p id="detailProductPrice" class="detail-price"></p>
           <p id="detailProductStock" class="stock"></p>
-          <form id="detailOrderForm" class="detail-order-form">
+          <form id="detailOrderForm" class="detail-order-form"><label class="hp-field" aria-hidden="true">Ne pas remplir<input name="website" tabindex="-1" autocomplete="off"></label>
             <h2>Commander cet article</h2>
             <label>Nom complet<input id="detailCustomerName" required maxlength="120" autocomplete="name" placeholder="Votre nom"></label>
             <label>Téléphone<input id="detailCustomerPhone" required maxlength="40" autocomplete="tel" placeholder="+243…"></label>
@@ -103,7 +103,7 @@
   </footer>
 
   <dialog id="orderDialog" class="dialog">
-    <form id="orderForm" class="dialog-card">
+    <form id="orderForm" class="dialog-card"><label class="hp-field" aria-hidden="true">Ne pas remplir<input name="website" tabindex="-1" autocomplete="off"></label>
       <button type="button" class="dialog-close" data-close="orderDialog" aria-label="Fermer">×</button>
       <p class="eyebrow">COMMANDE WHATSAPP</p>
       <h2>Finaliser votre commande</h2>
