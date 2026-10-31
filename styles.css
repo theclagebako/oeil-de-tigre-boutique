@@ -50,3 +50,6 @@ button:disabled{opacity:.48;cursor:not-allowed;transform:none!important}
 @media(prefers-reduced-motion:reduce){.skeleton-card{animation:none}}
 
 .hp-field{position:absolute!important;left:-10000px!important;width:1px;height:1px;overflow:hidden}
+
+/* Keep native hidden states reliable even when component styles set display. */
+[hidden]{display:none!important}
