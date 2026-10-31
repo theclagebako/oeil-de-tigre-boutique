@@ -26,6 +26,31 @@
   </header>
 
   <main>
+    <section id="productDetailPage" class="product-detail-page section" hidden>
+      <button type="button" class="button button-outline detail-back" id="detailBack">← Retour à la collection</button>
+      <div class="product-detail-layout">
+        <div class="product-detail-gallery">
+          <img id="detailMainImage" src="" alt="">
+          <div id="detailGalleryThumbs" class="detail-gallery-thumbs"></div>
+        </div>
+        <div class="product-detail-info">
+          <p class="eyebrow">COLLECTION ŒIL DE TIGRE</p>
+          <h1 id="detailProductName"></h1>
+          <p id="detailProductDescription" class="muted"></p>
+          <p id="detailProductPrice" class="detail-price"></p>
+          <p id="detailProductStock" class="stock"></p>
+          <form id="detailOrderForm" class="detail-order-form">
+            <h2>Commander cet article</h2>
+            <label>Nom complet<input id="detailCustomerName" required maxlength="120" autocomplete="name" placeholder="Votre nom"></label>
+            <label>Téléphone<input id="detailCustomerPhone" required maxlength="40" autocomplete="tel" placeholder="+243…"></label>
+            <label>Adresse de livraison<textarea id="detailCustomerAddress" required maxlength="500" placeholder="Votre adresse complète"></textarea></label>
+            <label>Quantité<input id="detailOrderQuantity" type="number" min="1" max="20" value="1" required></label>
+            <button class="button button-orange full-width" type="submit" id="detailOrderSubmit">Enregistrer et ouvrir WhatsApp</button>
+            <p class="form-feedback" id="detailOrderFeedback" role="status"></p>
+          </form>
+        </div>
+      </div>
+    </section>
     <section class="hero" id="accueil">
       <div class="hero-copy">
         <p class="eyebrow">PIERRES NATURELLES · STYLE INTEMPOREL</p>
