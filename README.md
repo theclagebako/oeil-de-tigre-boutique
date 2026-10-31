@@ -77,3 +77,11 @@ Pour chaque mise à jour du code, redéposez le dossier sur Netlify ou reliez un
 - Connexion Admin refusée : vérifiez que l'utilisateur existe dans Authentication et que son UUID est dans `public.admin_users`.
 - Upload refusé : vérifiez que l'utilisateur connecté est administrateur, que le bucket existe et que l'image fait moins de 5 Mo.
 - Ne partagez jamais votre mot de passe, votre clé `service_role` ou un accès administrateur.
+
+
+## Galerie multi-photos des produits
+
+- Dans l'administration, modifiez un produit puis sélectionnez plusieurs images (8 photos maximum par produit).
+- Les photos existantes sont conservées quand vous en ajoutez de nouvelles.
+- La première photo sert d'image principale ; les autres sont accessibles dans la galerie du produit.
+- La colonne `gallery_images` de `public.products` stocke les photos supplémentaires.
