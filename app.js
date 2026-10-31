@@ -23,9 +23,19 @@
   function openDialog(id) { const d = $(id); if (d && !d.open) d.showModal(); }
   function closeDialog(id) { const d = $(id); if (d && d.open) d.close(); }
   function safeText(value) { return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function safeImageUrl(value) {
+    if (!value) return "";
+    try {
+      const url = new URL(String(value), window.location.origin);
+      if (url.protocol !== "https:" && url.origin !== window.location.origin) return "";
+      if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+      return safeText(url.href);
+    } catch { return ""; }
+  }
 
   function productImage(product) {
-    if (product.image_url) return `<img src="${safeText(product.image_url)}" alt="${safeText(product.name)}" loading="lazy">`;
+    const imageUrl = safeImageUrl(product.image_url);
+    if (imageUrl) return `<img src="${imageUrl}" alt="${safeText(product.name)}" loading="lazy">`;
     return `<div class="no-image">Photo à venir</div>`;
   }
   function renderProducts() {
@@ -161,7 +171,7 @@
     if (error) { list.innerHTML = `<p class="muted">Erreur de chargement des produits.</p>`; return; }
     list.innerHTML = data.length ? data.map(p => `
       <div class="admin-list-item">
-        <div class="admin-list-main">${p.image_url ? `<img src="${safeText(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
+        <div class="admin-list-main">${safeImageUrl(p.image_url) ? `<img src="${safeImageUrl(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
         <div class="admin-actions"><button class="button button-outline" data-edit="${p.id}">Modifier</button><button class="button button-outline" data-toggle="${p.id}" data-active="${p.is_active}">${p.is_active ? "Masquer" : "Publier"}</button><button class="button button-outline" data-delete="${p.id}">Supprimer</button></div>
       </div>`).join("") : `<div class="empty-state">Aucun produit. Ajoutez votre premier bracelet ci-dessus.</div>`;
     list.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editProduct(data.find(p => p.id === b.dataset.edit))));
@@ -248,7 +258,6 @@
   });
   $("headerOrder").addEventListener("click", () => $("collection").scrollIntoView({ behavior: "smooth" }));
   $("contactWhatsApp").href = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}`;
-  $("menuToggle").addEventListener("click", () => $("mainNav")?.classList.toggle("open"));
   document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => closeDialog(b.dataset.close)));
   ["orderDialog","adminDialog"].forEach(id => $(id).addEventListener("click", e => { if (e.target === $(id)) closeDialog(id); }));
   document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
