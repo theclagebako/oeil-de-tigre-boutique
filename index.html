@@ -108,7 +108,7 @@
             <label>Nom du produit<input id="productName" required maxlength="120" placeholder="Ex. Classique Homme"></label>
             <label>Description<textarea id="productDescription" maxlength="1000" placeholder="Description du bracelet"></textarea></label>
             <div class="form-row">
-              <label>Prix (FC)<input id="productPrice" type="number" min="0" step="1" required placeholder="25000"></label>
+              <label>Prix fixe (USD)<input id="productPrice" type="number" min="0" step="0.01" value="5" required></label>
               <label>Stock disponible<input id="productStock" type="number" min="0" step="1" value="0" required></label>
             </div>
             <label>Photo du produit<input id="productImage" type="file" accept="image/*"></label>
