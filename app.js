@@ -410,7 +410,7 @@
     if (!db) { toast("Configurez d'abord Supabase dans config.js."); return; }
     await refreshSession(); openDialog("adminDialog");
   });
-  $("headerOrder").addEventListener("click", () => $("collection").scrollIntoView({ behavior: "smooth" }));
+  $("headerOrder").addEventListener("click", () => { if (!$("productDetailPage").hidden) closeProductDetail(false); $("collection").scrollIntoView({ behavior: "smooth" }); });
   $("contactWhatsApp").href = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}`;
   document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => closeDialog(b.dataset.close)));
   ["orderDialog","adminDialog"].forEach(id => $(id).addEventListener("click", e => { if (e.target === $(id)) closeDialog(id); }));
