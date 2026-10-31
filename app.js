@@ -281,4 +281,12 @@
     if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
   });
   loadProducts();
+  // Ouvre directement l'espace admin après une connexion depuis /admin.html.
+  if (new URLSearchParams(window.location.search).get("admin") === "1") {
+    (async () => {
+      if (db) await refreshSession();
+      openDialog("adminDialog");
+      history.replaceState({}, "", window.location.pathname);
+    })();
+  }
 })();
