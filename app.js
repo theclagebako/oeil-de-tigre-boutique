@@ -33,10 +33,13 @@
     } catch { return ""; }
   }
 
+  function productImages(product) {
+    return [...new Set([product.image_url, ...(Array.isArray(product.gallery_images) ? product.gallery_images : [])].filter(Boolean).map(safeImageUrl).filter(Boolean))].slice(0, 8);
+  }
   function productImage(product) {
-    const imageUrl = safeImageUrl(product.image_url);
-    if (imageUrl) return `<img src="${imageUrl}" alt="${safeText(product.name)}" loading="lazy">`;
-    return `<div class="no-image">Photo à venir</div>`;
+    const images = productImages(product);
+    if (!images.length) return `<div class="no-image">Photo à venir</div>`;
+    return `<div class="product-gallery"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
   }
   function renderProducts() {
     const grid = $("productGrid");
@@ -57,6 +60,11 @@
         </div>
       </article>`).join("");
     grid.querySelectorAll("[data-order]").forEach(btn => btn.addEventListener("click", () => openOrder(btn.dataset.order)));
+    grid.querySelectorAll("[data-gallery-image]").forEach(btn => btn.addEventListener("click", () => {
+      const gallery = btn.closest(".product-gallery");
+      gallery.querySelector(".gallery-main").src = btn.dataset.galleryImage;
+      gallery.querySelectorAll(".gallery-thumb").forEach(thumb => thumb.classList.toggle("active", thumb === btn));
+    }));
   }
   function renderOrderOptions(selectedId = "") {
     const select = $("orderProduct");
@@ -172,7 +180,7 @@
     const fixedPriceProducts = (data || []).map(product => ({ ...product, price: Number(product.price) }));
     list.innerHTML = fixedPriceProducts.length ? fixedPriceProducts.map(p => `
       <div class="admin-list-item">
-        <div class="admin-list-main">${safeImageUrl(p.image_url) ? `<img src="${safeImageUrl(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
+        <div class="admin-list-main">${safeImageUrl(p.image_url) ? `<img src="${safeImageUrl(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${productImages(p).length} photo(s) · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
         <div class="admin-actions"><button class="button button-outline" data-edit="${p.id}">Modifier</button><button class="button button-outline" data-toggle="${p.id}" data-active="${p.is_active}">${p.is_active ? "Masquer" : "Publier"}</button><button class="button button-outline" data-delete="${p.id}">Supprimer</button></div>
       </div>`).join("") : `<div class="empty-state">Aucun produit. Ajoutez votre premier bracelet ci-dessus.</div>`;
     list.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editProduct(fixedPriceProducts.find(p => p.id === b.dataset.edit))));
@@ -183,12 +191,15 @@
     $("editProductId").value = p.id; $("productName").value = p.name;
     $("productDescription").value = p.description || ""; $("productPrice").value = p.price;
     $("productStock").value = p.stock; $("productActive").checked = p.is_active;
+    const currentImages = productImages(p);
+    $("existingProductImages").innerHTML = currentImages.length ? `<p class="small muted">Photos déjà enregistrées (${currentImages.length}) — elles seront conservées.</p><div class="admin-gallery-preview">${currentImages.map(url => `<img src="${url}" alt="Photo existante">`).join("")}</div>` : "";
     $("productEditorTitle").textContent = "Modifier le produit";
     $("saveProductButton").textContent = "Enregistrer les modifications";
     $("productForm").scrollIntoView({ behavior: "smooth", block: "start" });
   }
   function resetProductForm() {
     $("productForm").reset(); $("editProductId").value = "";
+    $("existingProductImages").innerHTML = "";
     $("productActive").checked = true; $("productStock").value = 0; $("productPrice").value = 5;
     $("productEditorTitle").textContent = "Ajouter un produit";
     $("saveProductButton").textContent = "Enregistrer le produit";
@@ -212,8 +223,10 @@
     const save = $("saveProductButton"); save.disabled = true;
     feedback("productFeedback", "Enregistrement…");
     try {
-      const file = $("productImage").files[0];
-      const imageUrl = await uploadImage(file);
+      const files = Array.from($("productImages").files || []);
+      if (files.length > 8) throw new Error("Choisissez 8 photos maximum.");
+      const uploadedImages = [];
+      for (const file of files) uploadedImages.push(await uploadImage(file));
       const record = {
         name: $("productName").value.trim(),
         description: $("productDescription").value.trim(),
@@ -222,7 +235,14 @@
         is_active: $("productActive").checked
       };
       if (!record.name || !Number.isFinite(record.price) || record.price < 0 || !Number.isInteger(record.stock) || record.stock < 0) throw new Error("Vérifiez le nom, le prix et le stock.");
-      if (imageUrl) record.image_url = imageUrl;
+      if (uploadedImages.length) {
+        const { data: existing } = id ? await db.from("products").select("image_url,gallery_images").eq("id", id).single() : { data: null };
+        const previousImages = existing ? [...new Set([existing.image_url, ...(existing.gallery_images || [])].filter(Boolean))] : [];
+        if (previousImages.length + uploadedImages.length > 8) throw new Error(`Il reste ${Math.max(0, 8 - previousImages.length)} emplacement(s) photo(s) pour ce produit.`);
+        const allImages = [...previousImages, ...uploadedImages];
+        record.image_url = allImages[0] || null;
+        record.gallery_images = allImages.slice(1);
+      } else if (!id) record.gallery_images = [];
       const result = id ? await db.from("products").update(record).eq("id", id) : await db.from("products").insert(record);
       if (result.error) throw result.error;
       resetProductForm(); await loadAdminProducts(); await loadProducts();
