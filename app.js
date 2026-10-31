@@ -9,6 +9,7 @@
     window.supabase;
   const db = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
   let products = [];
+  let signatureImageUrl = "";
   let currentUser = null;
   let toastTimer;
 
@@ -71,6 +72,17 @@
     select.innerHTML = products.map(p => `<option value="${safeText(p.id)}">${safeText(p.name)} — ${money(p.price)}</option>`).join("");
     if (selectedId) select.value = selectedId;
   }
+  async function loadSignature() {
+    if (!db) return;
+    const { data, error } = await db.from("site_settings").select("*").eq("id", 1).maybeSingle();
+    if (error) { console.error("Signature settings:", error); return; }
+    if (!data) return;
+    signatureImageUrl = data.signature_image_url || "";
+    $("signatureEyebrow").textContent = data.signature_eyebrow || "COLLECTION SIGNATURE";
+    $("signatureTitle").textContent = data.signature_title || "Œil de Tigre";
+    if (safeImageUrl(signatureImageUrl)) $("signatureImage").src = safeImageUrl(signatureImageUrl);
+  }
+
   async function loadProducts() {
     if (!db) {
       products = [];
@@ -154,7 +166,7 @@
   function showAdminState() {
     $("adminLoginView").hidden = !!currentUser;
     $("adminPanelView").hidden = !currentUser;
-    if (currentUser) { loadAdminProducts(); loadOrders(); }
+    if (currentUser) { loadAdminProducts(); loadOrders(); loadSignatureAdmin(); }
   }
   async function login(email, password) {
     const { data, error } = await db.auth.signInWithPassword({ email, password });
@@ -175,6 +187,46 @@
     currentUser = null; showAdminState(); toast("Déconnexion effectuée.");
   });
   if (db) db.auth.onAuthStateChange((_event, session) => { currentUser = session?.user || null; showAdminState(); });
+
+  async function loadSignatureAdmin() {
+    const { data, error } = await db.from("site_settings").select("*").eq("id", 1).maybeSingle();
+    if (error) { feedback("signatureFeedback", "Impossible de charger les réglages de la bannière.", true); return; }
+    if (!data) return;
+    signatureImageUrl = data.signature_image_url || "";
+    $("signatureEyebrowInput").value = data.signature_eyebrow || "COLLECTION SIGNATURE";
+    $("signatureTitleInput").value = data.signature_title || "Œil de Tigre";
+    $("signatureImagePreview").innerHTML = safeImageUrl(signatureImageUrl) ? `<img src="${safeImageUrl(signatureImageUrl)}" alt="Photo actuelle de la bannière">` : "Aucune photo enregistrée";
+  }
+
+  $("signatureForm").addEventListener("submit", async e => {
+    e.preventDefault(); if (!currentUser) return;
+    const button = $("saveSignatureButton"); button.disabled = true;
+    feedback("signatureFeedback", "Enregistrement…");
+    try {
+      const file = $("signatureImageInput").files?.[0];
+      let imageUrl = signatureImageUrl;
+      if (file) imageUrl = await uploadImage(file);
+      if (!imageUrl) throw new Error("Ajoutez une photo pour la bannière.");
+      const record = {
+        id: 1,
+        signature_eyebrow: $("signatureEyebrowInput").value.trim(),
+        signature_title: $("signatureTitleInput").value.trim(),
+        signature_image_url: imageUrl,
+        updated_at: new Date().toISOString()
+      };
+      if (!record.signature_eyebrow || !record.signature_title) throw new Error("Remplissez les deux textes.");
+      const { error } = await db.from("site_settings").upsert(record, { onConflict: "id" });
+      if (error) throw error;
+      signatureImageUrl = imageUrl;
+      $("signatureEyebrow").textContent = record.signature_eyebrow;
+      $("signatureTitle").textContent = record.signature_title;
+      $("signatureImage").src = safeImageUrl(imageUrl);
+      $("signatureImageInput").value = "";
+      $("signatureImagePreview").innerHTML = `<img src="${safeImageUrl(imageUrl)}" alt="Photo actuelle de la bannière">`;
+      feedback("signatureFeedback", "Section d’accueil mise à jour avec succès."); toast("Bannière d’accueil mise à jour.");
+    } catch (err) { feedback("signatureFeedback", err.message || "Enregistrement impossible.", true); }
+    finally { button.disabled = false; }
+  });
 
   async function loadAdminProducts() {
     const list = $("adminProductList");
@@ -304,6 +356,7 @@
     if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
   });
   loadProducts();
+  loadSignature();
   // Ouvre directement l'espace admin après une connexion depuis /admin.html.
   if (new URLSearchParams(window.location.search).get("admin") === "1") {
     (async () => {
