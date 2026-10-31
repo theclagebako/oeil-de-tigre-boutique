@@ -183,7 +183,7 @@
           db.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false }),
           new Promise((_, reject) => setTimeout(() => reject(new Error("Délai dépassé")), 10000))
         ]);
-        if (!result.error) break;
+        if (!result.error) { lastError = null; break; }
         lastError = result.error;
       } catch (err) { lastError = err; }
       if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 700));
