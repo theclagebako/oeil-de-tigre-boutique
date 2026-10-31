@@ -159,6 +159,7 @@
     e.preventDefault();
     if (!detailProduct) return;
     const quantity = Number($("detailOrderQuantity").value);
+    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé.", true); return; }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(detailProduct.stock)) {
       feedback("detailOrderFeedback", "Quantité invalide. Stock disponible : " + detailProduct.stock + ".", true); return;
     }
@@ -185,7 +186,19 @@
     const select = $("orderProduct");
     select.innerHTML = products.map(p => `<option value="${safeText(p.id)}">${safeText(p.name)} — ${money(p.price)}</option>`).join("");
     if (selectedId) select.value = selectedId;
+    updateOrderQuantityLimit();
   }
+  function updateOrderQuantityLimit() {
+    const product = products.find(p => String(p.id) === String($("orderProduct").value));
+    const quantity = $("orderQuantity");
+    if (!product) { quantity.max = "1"; quantity.disabled = true; return; }
+    const stock = Math.max(0, Number(product.stock) || 0);
+    quantity.max = String(Math.max(1, Math.min(20, stock)));
+    quantity.disabled = stock <= 0;
+    if (stock > 0 && Number(quantity.value) > stock) quantity.value = String(stock);
+    if (stock <= 0) quantity.value = "1";
+  }
+  $("orderProduct").addEventListener("change", updateOrderQuantityLimit);
   async function loadSignature() {
     if (!db) return;
     const { data, error } = await db.from("site_settings").select("*").eq("id", 1).maybeSingle();
@@ -243,6 +256,7 @@
     const product = products.find(p => String(p.id) === String($("orderProduct").value));
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
+    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé.", true); return; }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(product.stock)) {
       feedback("orderFeedback", "Quantité invalide. Stock disponible : " + product.stock + ".", true); return;
     }
