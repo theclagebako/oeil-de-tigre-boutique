@@ -8,5 +8,7 @@ window.APP_CONFIG = {
   SUPABASE_URL: "https://obtzcugzleschjhxztxa.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_JLuH7QWsNJ5V0fzGQOBLfg_KBXHKuXE",
   WHATSAPP_NUMBER: "243818616951",
-  CURRENCY_LABEL: "$"
+  CURRENCY_LABEL: "USD",
+  CDF_PER_USD: 2850,
+  DELIVERY_AREA: "Butembo (à confirmer)"
 };
