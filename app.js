@@ -2,6 +2,7 @@
   "use strict";
   const cfg = window.APP_CONFIG || {};
   const $ = (id) => document.getElementById(id);
+  const FIXED_PRODUCT_PRICE = 5;
   const money = (value) => `${new Intl.NumberFormat("fr-FR").format(Number(value) || 0)} ${cfg.CURRENCY_LABEL || "FC"}`;
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_URL.includes("TON-PROJET") &&
@@ -74,7 +75,7 @@
       $("productGrid").innerHTML = `<div class="empty-state">Impossible de charger la collection. Vérifiez la configuration Supabase et les règles SQL.</div>`;
       console.error(error); return;
     }
-    products = data || []; renderProducts(); renderOrderOptions();
+    products = (data || []).map(product => ({ ...product, price: FIXED_PRODUCT_PRICE })); renderProducts(); renderOrderOptions();
   }
   function openOrder(productId = "") {
     if (!db) { toast("La boutique doit d'abord être connectée à Supabase."); return; }
@@ -169,18 +170,19 @@
     const list = $("adminProductList");
     const { data, error } = await db.from("products").select("*").order("created_at", { ascending: false });
     if (error) { list.innerHTML = `<p class="muted">Erreur de chargement des produits.</p>`; return; }
-    list.innerHTML = data.length ? data.map(p => `
+    const fixedPriceProducts = (data || []).map(product => ({ ...product, price: FIXED_PRODUCT_PRICE }));
+    list.innerHTML = fixedPriceProducts.length ? fixedPriceProducts.map(p => `
       <div class="admin-list-item">
         <div class="admin-list-main">${safeImageUrl(p.image_url) ? `<img src="${safeImageUrl(p.image_url)}" alt="">` : ""}<div><strong>${safeText(p.name)}</strong><small>${money(p.price)} · Stock : ${p.stock} · ${p.is_active ? "Publié" : "Masqué"}</small></div></div>
         <div class="admin-actions"><button class="button button-outline" data-edit="${p.id}">Modifier</button><button class="button button-outline" data-toggle="${p.id}" data-active="${p.is_active}">${p.is_active ? "Masquer" : "Publier"}</button><button class="button button-outline" data-delete="${p.id}">Supprimer</button></div>
       </div>`).join("") : `<div class="empty-state">Aucun produit. Ajoutez votre premier bracelet ci-dessus.</div>`;
-    list.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editProduct(data.find(p => p.id === b.dataset.edit))));
+    list.querySelectorAll("[data-edit]").forEach(b => b.addEventListener("click", () => editProduct(fixedPriceProducts.find(p => p.id === b.dataset.edit))));
     list.querySelectorAll("[data-toggle]").forEach(b => b.addEventListener("click", () => toggleProduct(b.dataset.toggle, b.dataset.active === "true")));
     list.querySelectorAll("[data-delete]").forEach(b => b.addEventListener("click", () => deleteProduct(b.dataset.delete)));
   }
   function editProduct(p) {
     $("editProductId").value = p.id; $("productName").value = p.name;
-    $("productDescription").value = p.description || ""; $("productPrice").value = p.price;
+    $("productDescription").value = p.description || ""; $("productPrice").value = FIXED_PRODUCT_PRICE;
     $("productStock").value = p.stock; $("productActive").checked = p.is_active;
     $("productEditorTitle").textContent = "Modifier le produit";
     $("saveProductButton").textContent = "Enregistrer les modifications";
@@ -188,7 +190,7 @@
   }
   function resetProductForm() {
     $("productForm").reset(); $("editProductId").value = "";
-    $("productActive").checked = true; $("productStock").value = 0;
+    $("productActive").checked = true; $("productStock").value = 0; $("productPrice").value = FIXED_PRODUCT_PRICE;
     $("productEditorTitle").textContent = "Ajouter un produit";
     $("saveProductButton").textContent = "Enregistrer le produit";
     feedback("productFeedback", "");
@@ -216,7 +218,7 @@
       const record = {
         name: $("productName").value.trim(),
         description: $("productDescription").value.trim(),
-        price: Number($("productPrice").value),
+        price: FIXED_PRODUCT_PRICE,
         stock: Number($("productStock").value),
         is_active: $("productActive").checked
       };
