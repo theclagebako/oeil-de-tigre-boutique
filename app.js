@@ -203,7 +203,10 @@
   async function loadProducts() {
     if (!db) {
       products = [];
-      $("productGrid").innerHTML = `<div class="empty-state">La boutique est prête. Pour afficher les produits, configurez les identifiants Supabase dans <strong>config.js</strong> et exécutez le script SQL fourni.</div>`;
+      const grid = $("productGrid");
+      const hasConfig = Boolean(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY);
+      grid.innerHTML = `<div class="empty-state"><strong>${hasConfig ? "Connexion au catalogue indisponible." : "Catalogue momentanément indisponible."}</strong><p>${hasConfig ? "Le service de données ne s’est pas chargé. Vérifiez votre connexion puis réessayez." : "Notre catalogue est momentanément indisponible. Contactez-nous pour connaître les modèles disponibles."}</p><button class="button button-orange" id="retryCatalog">Réessayer</button> <a class="button button-outline" href="https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}" target="_blank" rel="noopener">WhatsApp</a></div>`;
+      $("retryCatalog").addEventListener("click", () => window.location.reload());
       return;
     }
     const grid = $("productGrid");
