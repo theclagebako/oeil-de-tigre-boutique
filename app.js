@@ -338,7 +338,7 @@
   ["orderDialog","adminDialog"].forEach(id => $(id).addEventListener("click", e => { if (e.target === $(id)) closeDialog(id); }));
   document.querySelectorAll(".tab").forEach(tab => tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === tab));
-    ["productsTab","ordersTab"].forEach(id => $(id).hidden = id !== tab.dataset.tab);
+    ["productsTab","signatureTab","ordersTab"].forEach(id => $(id).hidden = id !== tab.dataset.tab);
   }));
   $("year").textContent = new Date().getFullYear();
   // Nav mobile
