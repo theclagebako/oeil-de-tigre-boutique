@@ -13,3 +13,5 @@
 .admin-gallery-preview{display:flex;gap:8px;overflow-x:auto;padding:6px 0}
 .admin-gallery-preview img{width:58px;height:58px;object-fit:cover;border:1px solid var(--line)}
 .existing-product-images{margin:8px 0}
+
+.product-gallery.single .gallery-main{height:100%}
