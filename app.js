@@ -117,42 +117,69 @@
     const id = new URLSearchParams(location.search).get("produit");
     if (id) showProductDetail(id, false); else closeProductDetail(false);
   });
-  $("detailOrderForm").addEventListener("submit", async e => {
-    e.preventDefault();
-    if (!db || !detailProduct) { feedback("detailOrderFeedback", "Produit indisponible. Actualisez la page.", true); return; }
-    const quantity = Number($("detailOrderQuantity").value);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) { feedback("detailOrderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return; }
-    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé pour le moment.", true); return; }
-    if (quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
-    const order = {
-      customer_name: $("detailCustomerName").value.trim(),
-      customer_phone: $("detailCustomerPhone").value.trim(),
-      delivery_address: $("detailCustomerAddress").value.trim(),
-      product_id: detailProduct.id,
-      product_name: detailProduct.name,
-      unit_price: detailProduct.price,
-      quantity,
-      total_price: Number(detailProduct.price) * quantity,
-      status: "nouvelle"
-    };
-    if (!order.customer_name || !order.customer_phone || !order.delivery_address) { feedback("detailOrderFeedback", "Veuillez remplir tous les champs.", true); return; }
-    const button = $("detailOrderSubmit");
-    button.disabled = true; button.textContent = "Enregistrement…";
-    const { error } = await db.from("orders").insert(order);
-    button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp";
-    if (error) { console.error(error); feedback("detailOrderFeedback", "La commande n'a pas pu être enregistrée. Réessayez.", true); return; }
+
+  let lastOrderAttemptAt = 0;
+  function normalizeDRCPhone(value) {
+    const compact = String(value || "").trim().replace(/[\s().-]/g, "");
+    if (/^0\d{9}$/.test(compact)) return "+243" + compact.slice(1);
+    if (/^\+?243\d{9}$/.test(compact)) return "+" + compact.replace(/^\+/, "");
+    return "";
+  }
+  function orderWhatsAppUrl(order) {
     const message = [
       "Bonjour, je souhaite commander :", "",
-      `Nom : ${order.customer_name}`,
-      `Téléphone : ${order.customer_phone}`,
-      `Modèle : ${order.product_name}`,
-      `Quantité : ${quantity}`,
-      `Prix unitaire : ${money(detailProduct.price)}`,
-      `Total : ${money(order.total_price)}`,
-      `Adresse : ${order.delivery_address}`
+      "Nom : " + order.customer_name,
+      "Téléphone : " + order.customer_phone,
+      "Modèle : " + order.product_name,
+      "Quantité : " + order.quantity,
+      "Prix unitaire : " + money(order.unit_price),
+      "Total : " + money(order.total_price),
+      "Adresse : " + order.delivery_address
     ].join("\n");
-    const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
-    window.location.href = url;
+    return "https://wa.me/" + (cfg.WHATSAPP_NUMBER || "243818616951") + "?text=" + encodeURIComponent(message);
+  }
+  function validateOrderForm(form, order, feedbackId) {
+    if (!order.customer_name || !order.customer_phone || !order.delivery_address) {
+      feedback(feedbackId, "Veuillez remplir tous les champs.", true); return false;
+    }
+    const phone = normalizeDRCPhone(order.customer_phone);
+    if (!phone) { feedback(feedbackId, "Numéro RDC invalide : utilisez 0XXXXXXXXX ou +243XXXXXXXXX.", true); return false; }
+    order.customer_phone = phone;
+    if (Date.now() - lastOrderAttemptAt < 12000) {
+      feedback(feedbackId, "Patientez quelques secondes avant une nouvelle tentative.", true); return false;
+    }
+    lastOrderAttemptAt = Date.now();
+    return true;
+  }
+
+
+  $("detailOrderForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!db || !detailProduct) { feedback("detailOrderFeedback", "Service indisponible. Contactez-nous sur WhatsApp.", true); return; }
+    const quantity = Number($("detailOrderQuantity").value);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(detailProduct.stock)) {
+      feedback("detailOrderFeedback", "Quantité invalide. Stock disponible : " + detailProduct.stock + ".", true); return;
+    }
+    const order = { customer_name: $("detailCustomerName").value.trim(), customer_phone: $("detailCustomerPhone").value.trim(),
+      delivery_address: $("detailCustomerAddress").value.trim(), product_id: detailProduct.id, product_name: detailProduct.name,
+      unit_price: Number(detailProduct.price), quantity, total_price: Number(detailProduct.price) * quantity, status: "nouvelle" };
+    const form = $("detailOrderForm");
+    if (form.elements.website?.value || !validateOrderForm(form, order, "detailOrderFeedback")) return;
+    const button = $("detailOrderSubmit");
+    const whatsappWindow = window.open("about:blank", "_blank");
+    button.disabled = true; button.textContent = "Enregistrement…";
+    let saved = false;
+    try {
+      const { error } = await db.from("orders").insert(order);
+      if (error) throw error;
+      saved = true;
+    } catch (err) {
+      console.error("Order insert failed:", err);
+      feedback("detailOrderFeedback", "Enregistrement impossible : envoi uniquement par WhatsApp.", true);
+    } finally { button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp"; }
+    const url = orderWhatsAppUrl(order);
+    if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
+    if (saved) feedback("detailOrderFeedback", "Commande enregistrée. Finalisez l’envoi dans WhatsApp.");
   });
 
   function renderOrderOptions(selectedId = "") {
@@ -207,59 +234,37 @@
     openDialog("orderDialog");
   }
 
-  $("orderForm").addEventListener("submit", async (e) => {
+
+  $("orderForm").addEventListener("submit", async e => {
     e.preventDefault();
-    if (!db) return;
-    const product = products.find(p => p.id === $("orderProduct").value);
+    const form = $("orderForm");
+    if (!db) { feedback("orderFeedback", "Service indisponible. Contactez-nous sur WhatsApp.", true); return; }
+    if (form.elements.website?.value) return;
+    const product = products.find(p => String(p.id) === String($("orderProduct").value));
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
-    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé pour le moment.", true); return; }
-    if (quantity > product.stock) {
-      feedback("orderFeedback", `Stock insuffisant : ${product.stock} pièce(s) disponible(s).`, true); return;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(product.stock)) {
+      feedback("orderFeedback", "Quantité invalide. Stock disponible : " + product.stock + ".", true); return;
     }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
-      feedback("orderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return;
-    }
-    const order = {
-      customer_name: $("customerName").value.trim(),
-      customer_phone: $("customerPhone").value.trim(),
-      delivery_address: $("customerAddress").value.trim(),
-      product_id: product.id,
-      product_name: product.name,
-      unit_price: product.price,
-      quantity,
-      total_price: Number(product.price) * quantity,
-      status: "nouvelle"
-    };
-    if (!order.customer_name || !order.customer_phone || !order.delivery_address) {
-      feedback("orderFeedback", "Veuillez remplir tous les champs.", true); return;
-    }
+    const order = { customer_name: $("customerName").value.trim(), customer_phone: $("customerPhone").value.trim(),
+      delivery_address: $("customerAddress").value.trim(), product_id: product.id, product_name: product.name,
+      unit_price: Number(product.price), quantity, total_price: Number(product.price) * quantity, status: "nouvelle" };
+    if (!validateOrderForm(form, order, "orderFeedback")) return;
+    const submit = form.querySelector('[type="submit"]');
     const whatsappWindow = window.open("about:blank", "_blank");
-    const submit = $("orderForm").querySelector('[type="submit"]');
     submit.disabled = true; submit.textContent = "Enregistrement…";
-    const { error } = await db.from("orders").insert(order);
-    submit.disabled = false; submit.textContent = "Enregistrer et ouvrir WhatsApp";
-    if (error) {
-      console.error(error);
-      if (whatsappWindow) whatsappWindow.close();
-      feedback("orderFeedback", "La commande n'a pas pu être enregistrée. Réessayez ou contactez-nous directement.", true);
-      return;
-    }
-    const message = [
-      "Bonjour, je souhaite commander :",
-      "",
-      `Nom : ${order.customer_name}`,
-      `Téléphone : ${order.customer_phone}`,
-      `Modèle : ${order.product_name}`,
-      `Quantité : ${quantity}`,
-      `Prix unitaire : ${money(product.price)}`,
-      `Total : ${money(order.total_price)}`,
-      `Adresse : ${order.delivery_address}`
-    ].join("\n");
-    const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
-    if (whatsappWindow) whatsappWindow.location.href = url;
-    else window.location.href = url;
-    closeDialog("orderDialog"); $("orderForm").reset(); toast("Commande enregistrée. WhatsApp va s'ouvrir.");
+    let saved = false;
+    try {
+      const { error } = await db.from("orders").insert(order);
+      if (error) throw error;
+      saved = true;
+    } catch (err) {
+      console.error("Order insert failed:", err);
+      feedback("orderFeedback", "Enregistrement impossible : envoi uniquement par WhatsApp.", true);
+    } finally { submit.disabled = false; submit.textContent = "Enregistrer et ouvrir WhatsApp"; }
+    const url = orderWhatsAppUrl(order);
+    if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
+    if (saved) { closeDialog("orderDialog"); form.reset(); toast("Commande enregistrée. Finalisez l’envoi dans WhatsApp."); }
   });
 
   async function refreshSession() {
