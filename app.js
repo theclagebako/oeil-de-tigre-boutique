@@ -48,7 +48,7 @@
   function productImage(product) {
     const images = productImages(product);
     if (!images.length) return `<div class="no-image">Photo à venir</div>`;
-    return `<div class="product-gallery ${images.length === 1 ? "single" : ""}"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
+    return `<div class="product-gallery ${images.length === 1 ? "single" : ""}"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy" decoding="async">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
   }
   function renderProducts() {
     const grid = $("productGrid");
@@ -73,6 +73,7 @@
       card.addEventListener("click", e => { if (!e.target.closest("[data-gallery-image]")) showProductDetail(card.dataset.productDetail, true); });
       card.addEventListener("keydown", e => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showProductDetail(card.dataset.productDetail, true); } });
     });
+    grid.querySelectorAll(".gallery-main").forEach(img => img.addEventListener("error", () => { img.closest(".product-gallery").innerHTML = `<div class="no-image">Photo momentanément indisponible</div>`; }, { once: true }));
     grid.querySelectorAll("[data-gallery-image]").forEach(btn => btn.addEventListener("click", () => {
       const gallery = btn.closest(".product-gallery");
       gallery.querySelector(".gallery-main").src = btn.dataset.galleryImage;
@@ -95,6 +96,8 @@
     $("detailOrderSubmit").disabled = Number(product.stock) <= 0;
     $("detailOrderQuantity").value = "1";
     $("detailMainImage").src = images[0] || "";
+    $("detailMainImage").loading = "eager";
+    $("detailMainImage").decoding = "async";
     $("detailMainImage").alt = product.name;
     $("detailGalleryThumbs").innerHTML = images.length > 1 ? images.map((url, i) => `<button type="button" class="detail-gallery-thumb ${i === 0 ? "active" : ""}" data-detail-image="${url}" aria-label="Afficher la photo ${i + 1}"><img src="${url}" alt=""></button>`).join("") : "";
     $("detailGalleryThumbs").querySelectorAll("[data-detail-image]").forEach(button => button.addEventListener("click", () => {
@@ -207,7 +210,13 @@
     signatureImageUrl = data.signature_image_url || "";
     $("signatureEyebrow").textContent = data.signature_eyebrow || "COLLECTION SIGNATURE";
     $("signatureTitle").textContent = data.signature_title || "Œil de Tigre";
-    if (safeImageUrl(signatureImageUrl)) $("signatureImage").src = safeImageUrl(signatureImageUrl);
+    if (safeImageUrl(signatureImageUrl)) {
+      const hero = $("signatureImage");
+      hero.src = safeImageUrl(signatureImageUrl);
+      hero.loading = "eager";
+      hero.decoding = "async";
+      hero.alt = data.signature_title || "Collection signature Œil de Tigre";
+    }
   }
 
   async function loadProducts() {
