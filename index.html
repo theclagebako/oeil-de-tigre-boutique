@@ -35,8 +35,8 @@
         <div class="hero-note"><span class="dot"></span> Commande simple et directe sur WhatsApp</div>
       </div>
       <div class="hero-visual">
-        <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=1100&q=85" alt="Bracelet élégant" fetchpriority="high">
-        <div class="image-caption"><span>COLLECTION SIGNATURE</span><strong>Œil de Tigre</strong></div>
+        <img id="signatureImage" src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=1100&q=85" alt="Bracelet élégant" fetchpriority="high">
+        <div class="image-caption"><span id="signatureEyebrow">COLLECTION SIGNATURE</span><strong id="signatureTitle">Œil de Tigre</strong></div>
       </div>
     </section>
 
@@ -100,7 +100,7 @@
       </div>
       <div id="adminPanelView" hidden>
         <div class="admin-top"><div><p class="eyebrow">TABLEAU DE BORD</p><h2>Gestion de la boutique</h2></div><button id="logoutButton" class="button button-outline">Déconnexion</button></div>
-        <div class="admin-tabs"><button class="tab active" data-tab="productsTab">Produits</button><button class="tab" data-tab="ordersTab">Commandes</button></div>
+        <div class="admin-tabs"><button class="tab active" data-tab="productsTab">Produits</button><button class="tab" data-tab="signatureTab">Bannière d’accueil</button><button class="tab" data-tab="ordersTab">Commandes</button></div>
         <section id="productsTab">
           <h3 id="productEditorTitle">Ajouter un produit</h3>
           <form id="productForm" class="admin-form">
@@ -119,6 +119,19 @@
             <p class="form-feedback" id="productFeedback" role="status"></p>
           </form>
           <h3 class="admin-subtitle">Produits enregistrés</h3><div id="adminProductList" class="admin-list"></div>
+        </section>
+        <section id="signatureTab" hidden>
+          <h3>Section Collection Signature</h3>
+          <p class="muted small">Modifiez la photo et les textes affichés sur la grande image de la page d’accueil.</p>
+          <form id="signatureForm" class="admin-form">
+            <label>Petit texte<input id="signatureEyebrowInput" maxlength="80" required value="COLLECTION SIGNATURE"></label>
+            <label>Titre principal<input id="signatureTitleInput" maxlength="100" required value="Œil de Tigre"></label>
+            <label>Remplacer la photo<input id="signatureImageInput" type="file" accept="image/*"></label>
+            <p class="muted small">Formats image acceptés. Taille maximale : 5 Mo. Laissez vide pour conserver la photo actuelle.</p>
+            <div id="signatureImagePreview" class="signature-admin-preview"></div>
+            <button class="button button-orange" id="saveSignatureButton" type="submit">Enregistrer la section</button>
+            <p class="form-feedback" id="signatureFeedback" role="status"></p>
+          </form>
         </section>
         <section id="ordersTab" hidden>
           <h3>Commandes reçues</h3><p class="muted small">Les commandes récentes enregistrées dans la base apparaissent ici.</p><div id="adminOrderList" class="admin-list"></div>
