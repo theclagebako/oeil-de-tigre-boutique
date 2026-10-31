@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171717">
+  <meta name="description" content="Découvrez la collection de bracelets en pierres naturelles Œil de Tigre. Commandez directement sur WhatsApp.">
+  <title>Œil de Tigre — Bijoux élégants</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/config.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#accueil" aria-label="Œil de Tigre, accueil">ŒIL DE <span>TIGRE</span></a>
+    <nav class="main-nav" id="mainNav">
+      <a href="#accueil">Accueil</a><a href="#collection">Collection</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button class="button button-dark header-order" id="headerOrder">Commander</button>
+    <button class="menu-toggle" id="menuToggle" aria-label="Ouvrir le menu">☰</button>
+  </header>
+
+  <main>
+    <section class="hero" id="accueil">
+      <div class="hero-copy">
+        <p class="eyebrow">PIERRES NATURELLES · STYLE INTEMPOREL</p>
+        <h1>L’élégance à votre <em>poignet.</em></h1>
+        <p class="hero-description">Découvrez notre collection de bracelets en Œil de Tigre. Des pièces choisies pour apporter caractère et élégance à votre quotidien.</p>
+        <a class="button button-orange" href="#collection">Découvrir la collection <span>→</span></a>
+        <div class="hero-note"><span class="dot"></span> Commande simple et directe sur WhatsApp</div>
+      </div>
+      <div class="hero-visual">
+        <img src="https://images.unsplash.com/photo-1611591437281-460bfbe1220a?auto=format&fit=crop&w=1100&q=85" alt="Bracelet élégant" fetchpriority="high">
+        <div class="image-caption"><span>COLLECTION SIGNATURE</span><strong>Œil de Tigre</strong></div>
+      </div>
+    </section>
+
+    <section class="benefits">
+      <div><span class="benefit-icon">✧</span><span><strong>Style intemporel</strong><small>Des bijoux qui se distinguent</small></span></div>
+      <div><span class="benefit-icon">◇</span><span><strong>Pierres naturelles</strong><small>Une allure authentique</small></span></div>
+      <div><span class="benefit-icon">↗</span><span><strong>Commande facile</strong><small>Échange direct sur WhatsApp</small></span></div>
+    </section>
+
+    <section class="collection section" id="collection">
+      <div class="section-heading">
+        <div><p class="eyebrow">TROUVEZ VOTRE STYLE</p><h2>Notre collection</h2></div>
+        <p>Découvrez les modèles disponibles et choisissez celui qui vous ressemble.</p>
+      </div>
+      <div id="productGrid" class="product-grid">
+        <div class="loading-card">Chargement de la collection…</div>
+      </div>
+      <p class="status-message" id="catalogStatus" role="status"></p>
+    </section>
+
+    <section class="contact-banner" id="contact">
+      <div><p class="eyebrow">UNE QUESTION ?</p><h2>Votre prochain bijou vous attend.</h2><p>Contactez-nous directement pour obtenir des renseignements ou passer commande.</p></div>
+      <a class="button button-light" id="contactWhatsApp" href="https://wa.me/243818616951" target="_blank" rel="noopener">Nous contacter sur WhatsApp ↗</a>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand brand-footer" href="#accueil">ŒIL DE <span>TIGRE</span></a>
+    <p>© <span id="year"></span> Œil de Tigre. Tous droits réservés.</p>
+    <a href="#accueil">Retour en haut ↑</a>
+  </footer>
+
+  <dialog id="orderDialog" class="dialog">
+    <form id="orderForm" class="dialog-card">
+      <button type="button" class="dialog-close" data-close="orderDialog" aria-label="Fermer">×</button>
+      <p class="eyebrow">COMMANDE WHATSAPP</p>
+      <h2>Finaliser votre commande</h2>
+      <p class="muted">Renseignez vos coordonnées. Votre commande sera enregistrée puis préparée dans WhatsApp.</p>
+      <label>Bracelet<select id="orderProduct" required></select></label>
+      <label>Nom complet<input id="customerName" required maxlength="120" autocomplete="name" placeholder="Votre nom"></label>
+      <label>Téléphone<input id="customerPhone" required maxlength="40" autocomplete="tel" placeholder="+243…"></label>
+      <label>Adresse de livraison<textarea id="customerAddress" required maxlength="500" placeholder="Votre adresse complète"></textarea></label>
+      <label>Quantité<input id="orderQuantity" type="number" min="1" max="20" value="1" required></label>
+      <button class="button button-orange full-width" type="submit">Enregistrer et ouvrir WhatsApp</button>
+      <p class="form-feedback" id="orderFeedback" role="status"></p>
+    </form>
+  </dialog>
+
+  <dialog id="adminDialog" class="dialog admin-dialog">
+    <div class="dialog-card admin-card">
+      <button type="button" class="dialog-close" data-close="adminDialog" aria-label="Fermer">×</button>
+      <div id="adminLoginView">
+        <p class="eyebrow">ESPACE PRIVÉ</p><h2>Administration</h2>
+        <p class="muted">Connectez-vous avec le compte administrateur créé dans Supabase.</p>
+        <form id="loginForm">
+          <label>Adresse e-mail<input id="adminEmail" type="email" required autocomplete="username"></label>
+          <label>Mot de passe<input id="adminPassword" type="password" required autocomplete="current-password"></label>
+          <button class="button button-orange full-width" type="submit">Se connecter</button>
+          <p class="form-feedback" id="loginFeedback" role="status"></p>
+        </form>
+      </div>
+      <div id="adminPanelView" hidden>
+        <div class="admin-top"><div><p class="eyebrow">TABLEAU DE BORD</p><h2>Gestion de la boutique</h2></div><button id="logoutButton" class="button button-outline">Déconnexion</button></div>
+        <div class="admin-tabs"><button class="tab active" data-tab="productsTab">Produits</button><button class="tab" data-tab="ordersTab">Commandes</button></div>
+        <section id="productsTab">
+          <h3 id="productEditorTitle">Ajouter un produit</h3>
+          <form id="productForm" class="admin-form">
+            <input id="editProductId" type="hidden">
+            <label>Nom du produit<input id="productName" required maxlength="120" placeholder="Ex. Classique Homme"></label>
+            <label>Description<textarea id="productDescription" maxlength="1000" placeholder="Description du bracelet"></textarea></label>
+            <div class="form-row">
+              <label>Prix (FC)<input id="productPrice" type="number" min="0" step="1" required placeholder="25000"></label>
+              <label>Stock disponible<input id="productStock" type="number" min="0" step="1" value="0" required></label>
+            </div>
+            <label>Photo du produit<input id="productImage" type="file" accept="image/*"></label>
+            <label class="check-label"><input id="productActive" type="checkbox" checked> Afficher dans la boutique</label>
+            <div class="form-row"><button class="button button-orange" type="submit" id="saveProductButton">Enregistrer le produit</button><button class="button button-outline" type="button" id="resetProductButton">Effacer</button></div>
+            <p class="form-feedback" id="productFeedback" role="status"></p>
+          </form>
+          <h3 class="admin-subtitle">Produits enregistrés</h3><div id="adminProductList" class="admin-list"></div>
+        </section>
+        <section id="ordersTab" hidden>
+          <h3>Commandes reçues</h3><p class="muted small">Les commandes récentes enregistrées dans la base apparaissent ici.</p><div id="adminOrderList" class="admin-list"></div>
+        </section>
+        <p class="form-feedback" id="adminFeedback" role="status"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <button class="admin-shortcut" id="adminShortcut" aria-label="Ouvrir l'administration" title="Administration">⚙</button>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
