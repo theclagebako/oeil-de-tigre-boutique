@@ -111,7 +111,9 @@
               <label>Prix fixe (USD)<input id="productPrice" type="number" min="0" step="0.01" value="5" required></label>
               <label>Stock disponible<input id="productStock" type="number" min="0" step="1" value="0" required></label>
             </div>
-            <label>Photo du produit<input id="productImage" type="file" accept="image/*"></label>
+            <label>Photos du produit (jusqu'à 8 au total)<input id="productImages" type="file" accept="image/*" multiple></label>
+            <p class="muted small">Sélectionnez plusieurs photos en une fois. Les photos déjà enregistrées sont conservées lorsque vous en ajoutez.</p>
+            <div id="existingProductImages" class="existing-product-images"></div>
             <label class="check-label"><input id="productActive" type="checkbox" checked> Afficher dans la boutique</label>
             <div class="form-row"><button class="button button-orange" type="submit" id="saveProductButton">Enregistrer le produit</button><button class="button button-outline" type="button" id="resetProductButton">Effacer</button></div>
             <p class="form-feedback" id="productFeedback" role="status"></p>
