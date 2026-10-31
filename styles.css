@@ -40,3 +40,11 @@
 .detail-order-form textarea{min-height:76px;resize:vertical}
 @media(max-width:800px){.product-detail-layout{grid-template-columns:1fr;gap:25px}.product-detail-gallery>img{height:420px}.product-detail-info{padding:24px}}
 @media(max-width:480px){.product-detail-page{padding:35px 5%}.product-detail-gallery>img{height:330px;min-height:250px}.product-detail-info{padding:20px}.detail-back{margin-bottom:18px}}
+
+/* Améliorations accessibilité, chargement et stock */
+.skeleton-card{height:390px;border:1px solid var(--line);background:linear-gradient(100deg,#f4f0eb 25%,#fff 45%,#f4f0eb 65%);background-size:220% 100%;animation:catalogShimmer 1.35s ease-in-out infinite;border-radius:4px}
+@keyframes catalogShimmer{to{background-position-x:-220%}}
+button:disabled{opacity:.48;cursor:not-allowed;transform:none!important}
+.stock{font-weight:600}
+.floating-whatsapp{position:fixed;right:18px;bottom:72px;z-index:8;background:#198754;color:#fff;border-radius:999px;padding:13px 17px;font-weight:700;box-shadow:0 5px 20px #0002}
+@media(prefers-reduced-motion:reduce){.skeleton-card{animation:none}}
