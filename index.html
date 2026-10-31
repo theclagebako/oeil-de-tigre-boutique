@@ -4,27 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171717">
-  <meta name="description" content="Découvrez les bracelets Œil de Tigre en pierres naturelles. Prix en USD et estimation en CDF, commande directe sur WhatsApp.">
-  <meta property="og:site_name" content="Œil de Tigre">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Œil de Tigre — Bracelets en pierres naturelles">
-  <meta property="og:description" content="Découvrez notre collection et commandez directement sur WhatsApp.">
-  <meta property="og:url" content="https://oeil-de-tigre-boutique.netlify.app/">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Œil de Tigre — Bracelets en pierres naturelles">
-  <meta name="twitter:description" content="Découvrez notre collection et commandez directement sur WhatsApp.">
-  <meta property="og:image" content="https://oeil-de-tigre-boutique.netlify.app/favicon.svg">
+  <meta name="description" content="Découvrez la collection de bracelets en pierres naturelles Œil de Tigre. Commandez directement sur WhatsApp.">
   <title>Œil de Tigre — Bijoux élégants</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config.js"></script>
   <script defer src="/app.js"></script>
-  <link rel="canonical" href="https://oeil-de-tigre-boutique.netlify.app/">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Store","name":"Œil de Tigre","url":"https://oeil-de-tigre-boutique.netlify.app/","description":"Boutique de bracelets en pierres naturelles. Commande directe sur WhatsApp.","priceRange":"$5–$10","currenciesAccepted":"USD","telephone":"+243818616951","sameAs":["https://wa.me/243818616951"]}</script>
 </head>
 <body>
   <header class="site-header">
@@ -51,7 +39,7 @@
           <p id="detailProductDescription" class="muted"></p>
           <p id="detailProductPrice" class="detail-price"></p>
           <p id="detailProductStock" class="stock"></p>
-          <form id="detailOrderForm" class="detail-order-form"><label class="hp-field" aria-hidden="true">Ne pas remplir<input name="website" tabindex="-1" autocomplete="off"></label>
+          <form id="detailOrderForm" class="detail-order-form">
             <h2>Commander cet article</h2>
             <label>Nom complet<input id="detailCustomerName" required maxlength="120" autocomplete="name" placeholder="Votre nom"></label>
             <label>Téléphone<input id="detailCustomerPhone" required maxlength="40" autocomplete="tel" placeholder="+243…"></label>
@@ -88,7 +76,7 @@
         <div><p class="eyebrow">TROUVEZ VOTRE STYLE</p><h2>Notre collection</h2></div>
         <p>Découvrez les modèles disponibles et choisissez celui qui vous ressemble.</p>
       </div>
-      <div id="productGrid" class="product-grid" aria-live="polite">
+      <div id="productGrid" class="product-grid">
         <div class="loading-card">Chargement de la collection…</div>
       </div>
       <p class="status-message" id="catalogStatus" role="status"></p>
@@ -98,7 +86,6 @@
       <div><p class="eyebrow">UNE QUESTION ?</p><h2>Votre prochain bijou vous attend.</h2><p>Contactez-nous directement pour obtenir des renseignements ou passer commande.</p></div>
       <a class="button button-light" id="contactWhatsApp" href="https://wa.me/243818616951" target="_blank" rel="noopener">Nous contacter sur WhatsApp ↗</a>
     </section>
-    <section class="section" aria-labelledby="howToOrderTitle"><div class="section-heading"><div><p class="eyebrow">SIMPLE ET RAPIDE</p><h2 id="howToOrderTitle">Comment commander ?</h2></div><p>Un parcours clair, de votre choix à la livraison.</p></div><div class="benefits"><div><span class="benefit-icon">1</span><span><strong>Choisissez</strong><small>Parcourez la collection et sélectionnez votre bracelet.</small></span></div><div><span class="benefit-icon">2</span><span><strong>Renseignez</strong><small>Indiquez votre nom, téléphone et adresse.</small></span></div><div><span class="benefit-icon">3</span><span><strong>Confirmez</strong><small>Envoyez votre demande sur WhatsApp.</small></span></div><div><span class="benefit-icon">4</span><span><strong>Recevez</strong><small>Nous confirmons disponibilité, livraison et paiement avec vous.</small></span></div></div><p class="muted small">Zone de livraison et frais à confirmer avec notre équipe. Les modalités de paiement sont communiquées avant validation.</p></section>
   </main>
 
   <footer class="site-footer">
@@ -108,7 +95,7 @@
   </footer>
 
   <dialog id="orderDialog" class="dialog">
-    <form id="orderForm" class="dialog-card"><label class="hp-field" aria-hidden="true">Ne pas remplir<input name="website" tabindex="-1" autocomplete="off"></label>
+    <form id="orderForm" class="dialog-card">
       <button type="button" class="dialog-close" data-close="orderDialog" aria-label="Fermer">×</button>
       <p class="eyebrow">COMMANDE WHATSAPP</p>
       <h2>Finaliser votre commande</h2>
@@ -179,7 +166,6 @@
     </div>
   </dialog>
 
-  <a class="floating-whatsapp" id="floatingWhatsApp" href="https://wa.me/243818616951" target="_blank" rel="noopener" aria-label="Contacter Œil de Tigre sur WhatsApp">WhatsApp</a>
   <button class="admin-shortcut" id="adminShortcut" aria-label="Ouvrir l'administration" title="Administration">⚙</button>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>

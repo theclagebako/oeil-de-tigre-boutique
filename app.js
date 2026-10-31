@@ -2,14 +2,7 @@
   "use strict";
   const cfg = window.APP_CONFIG || {};
   const $ = (id) => document.getElementById(id);
-  const money = (value) => {
-    const usd = Number(value) || 0;
-    const usdText = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "USD" }).format(usd);
-    const rate = Number(cfg.CDF_PER_USD) || 2850;
-    const cdfText = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(usd * rate) + " CDF";
-    return `${usdText} · env. ${cdfText}`;
-  };
-  const stockLabel = (stock) => Number(stock) <= 0 ? "Épuisé" : Number(stock) <= 3 ? `Plus que ${stock} en stock` : "En stock";
+  const money = (value) => `${new Intl.NumberFormat("fr-FR").format(Number(value) || 0)} ${cfg.CURRENCY_LABEL || "FC"}`;
   const configured = cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY &&
     !cfg.SUPABASE_URL.includes("TON-PROJET") &&
     !cfg.SUPABASE_ANON_KEY.includes("COLLE_ICI") &&
@@ -48,7 +41,7 @@
   function productImage(product) {
     const images = productImages(product);
     if (!images.length) return `<div class="no-image">Photo à venir</div>`;
-    return `<div class="product-gallery ${images.length === 1 ? "single" : ""}"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy" decoding="async">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
+    return `<div class="product-gallery ${images.length === 1 ? "single" : ""}"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
   }
   function renderProducts() {
     const grid = $("productGrid");
@@ -63,8 +56,8 @@
           <h3>${safeText(p.name)}</h3>
           <p class="product-description">${safeText(p.description || "Un bracelet élégant pour votre quotidien.")}</p>
           <div class="product-bottom">
-            <div><div class="price">${money(p.price)}</div><div class="stock">${stockLabel(p.stock)}</div></div>
-            <button class="button button-dark" data-order="${safeText(p.id)}" ${Number(p.stock) <= 0 ? "disabled" : ""}>${Number(p.stock) <= 0 ? "Épuisé" : "Commander"}</button>
+            <div><div class="price">${money(p.price)}</div><div class="stock">${p.stock > 0 ? `${p.stock} disponible(s)` : "Disponible sur demande"}</div></div>
+            <button class="button button-dark" data-order="${safeText(p.id)}">Commander</button>
           </div>
         </div>
       </article>`).join("");
@@ -73,7 +66,6 @@
       card.addEventListener("click", e => { if (!e.target.closest("[data-gallery-image]")) showProductDetail(card.dataset.productDetail, true); });
       card.addEventListener("keydown", e => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showProductDetail(card.dataset.productDetail, true); } });
     });
-    grid.querySelectorAll(".gallery-main").forEach(img => img.addEventListener("error", () => { img.closest(".product-gallery").innerHTML = `<div class="no-image">Photo momentanément indisponible</div>`; }, { once: true }));
     grid.querySelectorAll("[data-gallery-image]").forEach(btn => btn.addEventListener("click", () => {
       const gallery = btn.closest(".product-gallery");
       gallery.querySelector(".gallery-main").src = btn.dataset.galleryImage;
@@ -84,20 +76,14 @@
     const product = products.find(p => String(p.id) === String(productId));
     if (!product) return;
     detailProduct = product;
-    const floatingWhatsApp = $("floatingWhatsApp");
-    if (floatingWhatsApp) floatingWhatsApp.href = "https://wa.me/" + (cfg.WHATSAPP_NUMBER || "243818616951") + "?text=" + encodeURIComponent("Bonjour, je souhaite des informations sur " + product.name + ".");
     const images = productImages(product);
     $("detailProductName").textContent = product.name;
     $("detailProductDescription").textContent = product.description || "Un bracelet élégant pour votre quotidien.";
     $("detailProductPrice").textContent = money(product.price);
-    $("detailProductStock").textContent = stockLabel(product.stock);
-    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 1)));
-    $("detailOrderQuantity").disabled = Number(product.stock) <= 0;
-    $("detailOrderSubmit").disabled = Number(product.stock) <= 0;
+    $("detailProductStock").textContent = product.stock > 0 ? `${product.stock} disponible(s)` : "Disponible sur demande";
+    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 20)));
     $("detailOrderQuantity").value = "1";
     $("detailMainImage").src = images[0] || "";
-    $("detailMainImage").loading = "eager";
-    $("detailMainImage").decoding = "async";
     $("detailMainImage").alt = product.name;
     $("detailGalleryThumbs").innerHTML = images.length > 1 ? images.map((url, i) => `<button type="button" class="detail-gallery-thumb ${i === 0 ? "active" : ""}" data-detail-image="${url}" aria-label="Afficher la photo ${i + 1}"><img src="${url}" alt=""></button>`).join("") : "";
     $("detailGalleryThumbs").querySelectorAll("[data-detail-image]").forEach(button => button.addEventListener("click", () => {
@@ -122,86 +108,48 @@
     const id = new URLSearchParams(location.search).get("produit");
     if (id) showProductDetail(id, false); else closeProductDetail(false);
   });
-
-  let lastOrderAttemptAt = 0;
-  function normalizeDRCPhone(value) {
-    const compact = String(value || "").trim().replace(/[\s().-]/g, "");
-    if (/^0\d{9}$/.test(compact)) return "+243" + compact.slice(1);
-    if (/^\+?243\d{9}$/.test(compact)) return "+" + compact.replace(/^\+/, "");
-    return "";
-  }
-  function orderWhatsAppUrl(order) {
-    const message = [
-      "Bonjour, je souhaite commander :", "",
-      "Nom : " + order.customer_name,
-      "Téléphone : " + order.customer_phone,
-      "Modèle : " + order.product_name,
-      "Quantité : " + order.quantity,
-      "Prix unitaire : " + money(order.unit_price),
-      "Total : " + money(order.total_price),
-      "Adresse : " + order.delivery_address
-    ].join("\n");
-    return "https://wa.me/" + (cfg.WHATSAPP_NUMBER || "243818616951") + "?text=" + encodeURIComponent(message);
-  }
-  function validateOrderForm(form, order, feedbackId) {
-    if (!order.customer_name || !order.customer_phone || !order.delivery_address) {
-      feedback(feedbackId, "Veuillez remplir tous les champs.", true); return false;
-    }
-    const phone = normalizeDRCPhone(order.customer_phone);
-    if (!phone) { feedback(feedbackId, "Numéro RDC invalide : utilisez 0XXXXXXXXX ou +243XXXXXXXXX.", true); return false; }
-    order.customer_phone = phone;
-    if (Date.now() - lastOrderAttemptAt < 12000) {
-      feedback(feedbackId, "Patientez quelques secondes avant une nouvelle tentative.", true); return false;
-    }
-    lastOrderAttemptAt = Date.now();
-    return true;
-  }
-
-
   $("detailOrderForm").addEventListener("submit", async e => {
     e.preventDefault();
-    if (!detailProduct) return;
+    if (!db || !detailProduct) { feedback("detailOrderFeedback", "Produit indisponible. Actualisez la page.", true); return; }
     const quantity = Number($("detailOrderQuantity").value);
-    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé.", true); return; }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(detailProduct.stock)) {
-      feedback("detailOrderFeedback", "Quantité invalide. Stock disponible : " + detailProduct.stock + ".", true); return;
-    }
-    const order = { customer_name: $("detailCustomerName").value.trim(), customer_phone: $("detailCustomerPhone").value.trim(),
-      delivery_address: $("detailCustomerAddress").value.trim(), product_id: detailProduct.id, product_name: detailProduct.name,
-      unit_price: Number(detailProduct.price), quantity, total_price: Number(detailProduct.price) * quantity, status: "nouvelle" };
-    const form = $("detailOrderForm");
-    if (form.elements.website?.value || !validateOrderForm(form, order, "detailOrderFeedback")) return;
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) { feedback("detailOrderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return; }
+    if (detailProduct.stock > 0 && quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
+    const order = {
+      customer_name: $("detailCustomerName").value.trim(),
+      customer_phone: $("detailCustomerPhone").value.trim(),
+      delivery_address: $("detailCustomerAddress").value.trim(),
+      product_id: detailProduct.id,
+      product_name: detailProduct.name,
+      unit_price: detailProduct.price,
+      quantity,
+      total_price: Number(detailProduct.price) * quantity,
+      status: "nouvelle"
+    };
+    if (!order.customer_name || !order.customer_phone || !order.delivery_address) { feedback("detailOrderFeedback", "Veuillez remplir tous les champs.", true); return; }
     const button = $("detailOrderSubmit");
-    const whatsappWindow = window.open("about:blank", "_blank");
-    button.disabled = true; button.textContent = "Préparation…";
-    let saved = false;
-    if (db) {
-      try { const { error } = await db.from("orders").insert(order); if (error) throw error; saved = true; }
-      catch (err) { console.error("Order insert failed:", err); }
-    }
-    const url = orderWhatsAppUrl(order);
-    if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
+    button.disabled = true; button.textContent = "Enregistrement…";
+    const { error } = await db.from("orders").insert(order);
     button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp";
-    feedback("detailOrderFeedback", saved ? "Commande enregistrée. Finalisez l’envoi dans WhatsApp." : "La demande sera transmise directement dans WhatsApp. Vérifiez l’envoi du message.", !saved);
+    if (error) { console.error(error); feedback("detailOrderFeedback", "La commande n'a pas pu être enregistrée. Réessayez.", true); return; }
+    const message = [
+      "Bonjour, je souhaite commander :", "",
+      `Nom : ${order.customer_name}`,
+      `Téléphone : ${order.customer_phone}`,
+      `Modèle : ${order.product_name}`,
+      `Quantité : ${quantity}`,
+      `Prix unitaire : ${money(detailProduct.price)}`,
+      `Total : ${money(order.total_price)}`,
+      `Adresse : ${order.delivery_address}`
+    ].join("\\n");
+    const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
+    window.location.href = url;
   });
 
   function renderOrderOptions(selectedId = "") {
     const select = $("orderProduct");
     select.innerHTML = products.map(p => `<option value="${safeText(p.id)}">${safeText(p.name)} — ${money(p.price)}</option>`).join("");
     if (selectedId) select.value = selectedId;
-    updateOrderQuantityLimit();
   }
-  function updateOrderQuantityLimit() {
-    const product = products.find(p => String(p.id) === String($("orderProduct").value));
-    const quantity = $("orderQuantity");
-    if (!product) { quantity.max = "1"; quantity.disabled = true; return; }
-    const stock = Math.max(0, Number(product.stock) || 0);
-    quantity.max = String(Math.max(1, Math.min(20, stock)));
-    quantity.disabled = stock <= 0;
-    if (stock > 0 && Number(quantity.value) > stock) quantity.value = String(stock);
-    if (stock <= 0) quantity.value = "1";
-  }
-  $("orderProduct").addEventListener("change", updateOrderQuantityLimit);
   async function loadSignature() {
     if (!db) return;
     const { data, error } = await db.from("site_settings").select("*").eq("id", 1).maybeSingle();
@@ -210,82 +158,81 @@
     signatureImageUrl = data.signature_image_url || "";
     $("signatureEyebrow").textContent = data.signature_eyebrow || "COLLECTION SIGNATURE";
     $("signatureTitle").textContent = data.signature_title || "Œil de Tigre";
-    if (safeImageUrl(signatureImageUrl)) {
-      const hero = $("signatureImage");
-      hero.src = safeImageUrl(signatureImageUrl);
-      hero.loading = "eager";
-      hero.decoding = "async";
-      hero.alt = data.signature_title || "Collection signature Œil de Tigre";
-    }
+    if (safeImageUrl(signatureImageUrl)) $("signatureImage").src = safeImageUrl(signatureImageUrl);
   }
 
   async function loadProducts() {
     if (!db) {
       products = [];
-      const grid = $("productGrid");
-      const hasConfig = Boolean(cfg.SUPABASE_URL && cfg.SUPABASE_ANON_KEY);
-      grid.innerHTML = `<div class="empty-state"><strong>${hasConfig ? "Connexion au catalogue indisponible." : "Catalogue momentanément indisponible."}</strong><p>${hasConfig ? "Le service de données ne s’est pas chargé. Vérifiez votre connexion puis réessayez." : "Notre catalogue est momentanément indisponible. Contactez-nous pour connaître les modèles disponibles."}</p><button class="button button-orange" id="retryCatalog">Réessayer</button> <a class="button button-outline" href="https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}" target="_blank" rel="noopener">WhatsApp</a></div>`;
-      $("retryCatalog").addEventListener("click", () => window.location.reload());
+      $("productGrid").innerHTML = `<div class="empty-state">La boutique est prête. Pour afficher les produits, configurez les identifiants Supabase dans <strong>config.js</strong> et exécutez le script SQL fourni.</div>`;
       return;
     }
-    const grid = $("productGrid");
-    grid.innerHTML = Array.from({length: 3}, () => '<div class="loading-card skeleton-card" aria-hidden="true"></div>').join("");
-    let result = null, lastError = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        result = await Promise.race([
-          db.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Délai dépassé")), 10000))
-        ]);
-        if (!result.error) { lastError = null; break; }
-        lastError = result.error;
-      } catch (err) { lastError = err; }
-      if (attempt === 0) await new Promise(resolve => setTimeout(resolve, 700));
+    const { data, error } = await db.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false });
+    if (error) {
+      $("productGrid").innerHTML = `<div class="empty-state">Impossible de charger la collection. Vérifiez la configuration Supabase et les règles SQL.</div>`;
+      console.error(error); return;
     }
-    if (!result || result.error || lastError) {
-      console.error(lastError || result?.error);
-      grid.innerHTML = '<div class="empty-state"><strong>Connexion lente ou indisponible.</strong><p>Vérifiez Internet puis réessayez, ou demandez notre catalogue sur WhatsApp.</p><button class="button button-orange" id="retryCatalog">Réessayer</button> <a class="button button-outline" href="https://wa.me/' + (cfg.WHATSAPP_NUMBER || "243818616951") + '" target="_blank" rel="noopener">WhatsApp</a></div>';
-      $("retryCatalog").addEventListener("click", loadProducts);
-      return;
-    }
-    products = (result.data || []).map(product => ({ ...product, price: Number(product.price) }));
-    renderProducts(); renderOrderOptions();
+    products = (data || []).map(product => ({ ...product, price: Number(product.price) })); renderProducts(); renderOrderOptions();
   }
   function openOrder(productId = "") {
+    if (!db) { toast("La boutique doit d'abord être connectée à Supabase."); return; }
     renderOrderOptions(productId);
     feedback("orderFeedback", "");
     openDialog("orderDialog");
   }
 
-
-  $("orderForm").addEventListener("submit", async e => {
+  $("orderForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const form = $("orderForm");
-    if (form.elements.website?.value) return;
-    const product = products.find(p => String(p.id) === String($("orderProduct").value));
+    if (!db) return;
+    const product = products.find(p => p.id === $("orderProduct").value);
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
-    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé.", true); return; }
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(product.stock)) {
-      feedback("orderFeedback", "Quantité invalide. Stock disponible : " + product.stock + ".", true); return;
+    if (product.stock > 0 && quantity > product.stock) {
+      feedback("orderFeedback", `Stock insuffisant : ${product.stock} pièce(s) disponible(s).`, true); return;
     }
-    const order = { customer_name: $("customerName").value.trim(), customer_phone: $("customerPhone").value.trim(),
-      delivery_address: $("customerAddress").value.trim(), product_id: product.id, product_name: product.name,
-      unit_price: Number(product.price), quantity, total_price: Number(product.price) * quantity, status: "nouvelle" };
-    if (!validateOrderForm(form, order, "orderFeedback")) return;
-    const submit = form.querySelector('[type="submit"]');
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+      feedback("orderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return;
+    }
+    const order = {
+      customer_name: $("customerName").value.trim(),
+      customer_phone: $("customerPhone").value.trim(),
+      delivery_address: $("customerAddress").value.trim(),
+      product_id: product.id,
+      product_name: product.name,
+      unit_price: product.price,
+      quantity,
+      total_price: Number(product.price) * quantity,
+      status: "nouvelle"
+    };
+    if (!order.customer_name || !order.customer_phone || !order.delivery_address) {
+      feedback("orderFeedback", "Veuillez remplir tous les champs.", true); return;
+    }
     const whatsappWindow = window.open("about:blank", "_blank");
-    submit.disabled = true; submit.textContent = "Préparation…";
-    let saved = false;
-    if (db) {
-      try { const { error } = await db.from("orders").insert(order); if (error) throw error; saved = true; }
-      catch (err) { console.error("Order insert failed:", err); }
-    }
-    const url = orderWhatsAppUrl(order);
-    if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
+    const submit = $("orderForm").querySelector('[type="submit"]');
+    submit.disabled = true; submit.textContent = "Enregistrement…";
+    const { error } = await db.from("orders").insert(order);
     submit.disabled = false; submit.textContent = "Enregistrer et ouvrir WhatsApp";
-    if (saved) { closeDialog("orderDialog"); form.reset(); toast("Commande enregistrée. Finalisez l’envoi dans WhatsApp."); }
-    else feedback("orderFeedback", "La demande sera transmise directement dans WhatsApp. Vérifiez l’envoi du message.", true);
+    if (error) {
+      console.error(error);
+      if (whatsappWindow) whatsappWindow.close();
+      feedback("orderFeedback", "La commande n'a pas pu être enregistrée. Réessayez ou contactez-nous directement.", true);
+      return;
+    }
+    const message = [
+      "Bonjour, je souhaite commander :",
+      "",
+      `Nom : ${order.customer_name}`,
+      `Téléphone : ${order.customer_phone}`,
+      `Modèle : ${order.product_name}`,
+      `Quantité : ${quantity}`,
+      `Prix unitaire : ${money(product.price)}`,
+      `Total : ${money(order.total_price)}`,
+      `Adresse : ${order.delivery_address}`
+    ].join("\n");
+    const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
+    if (whatsappWindow) whatsappWindow.location.href = url;
+    else window.location.href = url;
+    closeDialog("orderDialog"); $("orderForm").reset(); toast("Commande enregistrée. WhatsApp va s'ouvrir.");
   });
 
   async function refreshSession() {
@@ -486,7 +433,6 @@
   document.addEventListener("click", e => {
     if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
   });
-  if (cfg.HERO_IMAGE_URL && safeImageUrl(cfg.HERO_IMAGE_URL)) $("signatureImage").src = safeImageUrl(cfg.HERO_IMAGE_URL);
   loadProducts().then(() => {
     const productId = new URLSearchParams(window.location.search).get("produit");
     if (productId) showProductDetail(productId, false);

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2'"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config.js"></script>
 </head>
 <body style="min-height:100vh;background:var(--cream);display:grid;place-items:center;padding:24px">
@@ -20,7 +20,7 @@
     <p class="muted">Connectez-vous pour gérer les produits et les commandes de votre boutique.</p>
     <form id="adminPageLogin">
       <label>Adresse e-mail
-        <input id="adminPageEmail" type="email" autocomplete="username" required>
+        <input id="adminPageEmail" type="email" autocomplete="username" value="theclagebako@gmail.com" required>
       </label>
       <label>Mot de passe
         <input id="adminPagePassword" type="password" autocomplete="current-password" required placeholder="Votre mot de passe Supabase">
@@ -50,18 +50,17 @@
         submit.disabled = true;
         feedback.classList.remove("error");
         feedback.textContent = "Connexion en cours…";
-        try {
-          const {error} = await db.auth.signInWithPassword({
-            email: document.getElementById("adminPageEmail").value.trim(),
-            password: document.getElementById("adminPagePassword").value
-          });
-          if (error) throw error;
-          window.location.replace("/?admin=1");
-        } catch (error) {
-          feedback.textContent = "Connexion impossible. Vérifiez Internet, puis réessayez.";
+        const {error} = await db.auth.signInWithPassword({
+          email: document.getElementById("adminPageEmail").value.trim(),
+          password: document.getElementById("adminPagePassword").value
+        });
+        submit.disabled = false;
+        if (error) {
+          feedback.textContent = "Connexion refusée. Vérifiez le mot de passe et le compte administrateur Supabase.";
           feedback.classList.add("error");
-          submit.disabled = false;
+          return;
         }
+        window.location.replace("/?admin=1");
       });
     })();
   </script>
