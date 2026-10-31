@@ -88,7 +88,9 @@
     $("detailProductDescription").textContent = product.description || "Un bracelet élégant pour votre quotidien.";
     $("detailProductPrice").textContent = money(product.price);
     $("detailProductStock").textContent = stockLabel(product.stock);
-    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 1)));\n    $("detailOrderQuantity").disabled = Number(product.stock) <= 0;\n    $("detailOrderSubmit").disabled = Number(product.stock) <= 0;
+    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 1)));
+    $("detailOrderQuantity").disabled = Number(product.stock) <= 0;
+    $("detailOrderSubmit").disabled = Number(product.stock) <= 0;
     $("detailOrderQuantity").value = "1";
     $("detailMainImage").src = images[0] || "";
     $("detailMainImage").alt = product.name;
@@ -120,7 +122,8 @@
     if (!db || !detailProduct) { feedback("detailOrderFeedback", "Produit indisponible. Actualisez la page.", true); return; }
     const quantity = Number($("detailOrderQuantity").value);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) { feedback("detailOrderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return; }
-    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé pour le moment.", true); return; }\n    if (quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
+    if (Number(detailProduct.stock) <= 0) { feedback("detailOrderFeedback", "Ce produit est épuisé pour le moment.", true); return; }
+    if (quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
     const order = {
       customer_name: $("detailCustomerName").value.trim(),
       customer_phone: $("detailCustomerPhone").value.trim(),
@@ -147,7 +150,7 @@
       `Prix unitaire : ${money(detailProduct.price)}`,
       `Total : ${money(order.total_price)}`,
       `Adresse : ${order.delivery_address}`
-    ].join("\\n");
+    ].join("\n");
     const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
     window.location.href = url;
   });
@@ -210,7 +213,8 @@
     const product = products.find(p => p.id === $("orderProduct").value);
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
-    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé pour le moment.", true); return; }\n    if (quantity > product.stock) {
+    if (Number(product.stock) <= 0) { feedback("orderFeedback", "Ce produit est épuisé pour le moment.", true); return; }
+    if (quantity > product.stock) {
       feedback("orderFeedback", `Stock insuffisant : ${product.stock} pièce(s) disponible(s).`, true); return;
     }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
