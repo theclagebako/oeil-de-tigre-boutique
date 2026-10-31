@@ -10,6 +10,7 @@
   const db = configured ? window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY) : null;
   let products = [];
   let signatureImageUrl = "";
+  let detailProduct = null;
   let currentUser = null;
   let toastTimer;
 
@@ -49,7 +50,7 @@
       return;
     }
     grid.innerHTML = products.map(p => `
-      <article class="product-card">
+      <article class="product-card" data-product-detail="${safeText(p.id)}" tabindex="0" role="link" aria-label="Voir ${safeText(p.name)}">
         <div class="product-image">${productImage(p)}</div>
         <div class="product-info">
           <h3>${safeText(p.name)}</h3>
@@ -60,13 +61,90 @@
           </div>
         </div>
       </article>`).join("");
-    grid.querySelectorAll("[data-order]").forEach(btn => btn.addEventListener("click", () => openOrder(btn.dataset.order)));
+    grid.querySelectorAll("[data-order]").forEach(btn => btn.addEventListener("click", e => { e.stopPropagation(); showProductDetail(btn.dataset.order, true); }));
+    grid.querySelectorAll("[data-product-detail]").forEach(card => {
+      card.addEventListener("click", e => { if (!e.target.closest("[data-gallery-image]")) showProductDetail(card.dataset.productDetail, true); });
+      card.addEventListener("keydown", e => { if (e.target === card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showProductDetail(card.dataset.productDetail, true); } });
+    });
     grid.querySelectorAll("[data-gallery-image]").forEach(btn => btn.addEventListener("click", () => {
       const gallery = btn.closest(".product-gallery");
       gallery.querySelector(".gallery-main").src = btn.dataset.galleryImage;
       gallery.querySelectorAll(".gallery-thumb").forEach(thumb => thumb.classList.toggle("active", thumb === btn));
     }));
   }
+  function showProductDetail(productId, updateUrl = false) {
+    const product = products.find(p => String(p.id) === String(productId));
+    if (!product) return;
+    detailProduct = product;
+    const images = productImages(product);
+    $("detailProductName").textContent = product.name;
+    $("detailProductDescription").textContent = product.description || "Un bracelet élégant pour votre quotidien.";
+    $("detailProductPrice").textContent = money(product.price);
+    $("detailProductStock").textContent = product.stock > 0 ? `${product.stock} disponible(s)` : "Disponible sur demande";
+    $("detailOrderQuantity").max = String(Math.max(1, Math.min(20, Number(product.stock) || 20)));
+    $("detailOrderQuantity").value = "1";
+    $("detailMainImage").src = images[0] || "";
+    $("detailMainImage").alt = product.name;
+    $("detailGalleryThumbs").innerHTML = images.length > 1 ? images.map((url, i) => `<button type="button" class="detail-gallery-thumb ${i === 0 ? "active" : ""}" data-detail-image="${url}" aria-label="Afficher la photo ${i + 1}"><img src="${url}" alt=""></button>`).join("") : "";
+    $("detailGalleryThumbs").querySelectorAll("[data-detail-image]").forEach(button => button.addEventListener("click", () => {
+      $("detailMainImage").src = button.dataset.detailImage;
+      $("detailGalleryThumbs").querySelectorAll("button").forEach(item => item.classList.toggle("active", item === button));
+    }));
+    feedback("detailOrderFeedback", "");
+    document.querySelectorAll("main > section").forEach(section => section.hidden = section.id !== "productDetailPage");
+    $("productDetailPage").hidden = false;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (updateUrl) history.pushState({ productId }, "", `?produit=${encodeURIComponent(product.id)}`);
+  }
+  function closeProductDetail(updateUrl = true) {
+    detailProduct = null;
+    $("productDetailPage").hidden = true;
+    document.querySelectorAll("main > section").forEach(section => section.hidden = false);
+    if (updateUrl && new URLSearchParams(location.search).has("produit")) history.pushState({}, "", location.pathname);
+    $("collection").scrollIntoView({ behavior: "smooth" });
+  }
+  $("detailBack").addEventListener("click", () => closeProductDetail(true));
+  window.addEventListener("popstate", () => {
+    const id = new URLSearchParams(location.search).get("produit");
+    if (id) showProductDetail(id, false); else closeProductDetail(false);
+  });
+  $("detailOrderForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!db || !detailProduct) { feedback("detailOrderFeedback", "Produit indisponible. Actualisez la page.", true); return; }
+    const quantity = Number($("detailOrderQuantity").value);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) { feedback("detailOrderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return; }
+    if (detailProduct.stock > 0 && quantity > detailProduct.stock) { feedback("detailOrderFeedback", `Stock insuffisant : ${detailProduct.stock} pièce(s) disponible(s).`, true); return; }
+    const order = {
+      customer_name: $("detailCustomerName").value.trim(),
+      customer_phone: $("detailCustomerPhone").value.trim(),
+      delivery_address: $("detailCustomerAddress").value.trim(),
+      product_id: detailProduct.id,
+      product_name: detailProduct.name,
+      unit_price: detailProduct.price,
+      quantity,
+      total_price: Number(detailProduct.price) * quantity,
+      status: "nouvelle"
+    };
+    if (!order.customer_name || !order.customer_phone || !order.delivery_address) { feedback("detailOrderFeedback", "Veuillez remplir tous les champs.", true); return; }
+    const button = $("detailOrderSubmit");
+    button.disabled = true; button.textContent = "Enregistrement…";
+    const { error } = await db.from("orders").insert(order);
+    button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp";
+    if (error) { console.error(error); feedback("detailOrderFeedback", "La commande n'a pas pu être enregistrée. Réessayez.", true); return; }
+    const message = [
+      "Bonjour, je souhaite commander :", "",
+      `Nom : ${order.customer_name}`,
+      `Téléphone : ${order.customer_phone}`,
+      `Modèle : ${order.product_name}`,
+      `Quantité : ${quantity}`,
+      `Prix unitaire : ${money(detailProduct.price)}`,
+      `Total : ${money(order.total_price)}`,
+      `Adresse : ${order.delivery_address}`
+    ].join("\\n");
+    const url = `https://wa.me/${cfg.WHATSAPP_NUMBER || "243818616951"}?text=${encodeURIComponent(message)}`;
+    window.location.href = url;
+  });
+
   function renderOrderOptions(selectedId = "") {
     const select = $("orderProduct");
     select.innerHTML = products.map(p => `<option value="${safeText(p.id)}">${safeText(p.name)} — ${money(p.price)}</option>`).join("");
@@ -355,7 +433,10 @@
   document.addEventListener("click", e => {
     if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
   });
-  loadProducts();
+  loadProducts().then(() => {
+    const productId = new URLSearchParams(window.location.search).get("produit");
+    if (productId) showProductDetail(productId, false);
+  });
   loadSignature();
   // Ouvre directement l'espace admin après une connexion depuis /admin.html.
   if (new URLSearchParams(window.location.search).get("admin") === "1") {
