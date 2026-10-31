@@ -39,7 +39,7 @@
   function productImage(product) {
     const images = productImages(product);
     if (!images.length) return `<div class="no-image">Photo à venir</div>`;
-    return `<div class="product-gallery"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
+    return `<div class="product-gallery ${images.length === 1 ? "single" : ""}"><img class="gallery-main" src="${images[0]}" alt="${safeText(product.name)}" loading="lazy">${images.length > 1 ? `<div class="gallery-thumbs">${images.map((url, index) => `<button type="button" class="gallery-thumb ${index === 0 ? "active" : ""}" data-gallery-image="${url}" aria-label="Afficher la photo ${index + 1}"><img src="${url}" alt="" loading="lazy"></button>`).join("")}</div>` : ""}</div>`;
   }
   function renderProducts() {
     const grid = $("productGrid");
@@ -97,6 +97,9 @@
     const product = products.find(p => p.id === $("orderProduct").value);
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
     const quantity = Number($("orderQuantity").value);
+    if (product.stock > 0 && quantity > product.stock) {
+      feedback("orderFeedback", `Stock insuffisant : ${product.stock} pièce(s) disponible(s).`, true); return;
+    }
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
       feedback("orderFeedback", "La quantité doit être comprise entre 1 et 20.", true); return;
     }
