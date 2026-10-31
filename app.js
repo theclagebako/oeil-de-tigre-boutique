@@ -157,7 +157,7 @@
 
   $("detailOrderForm").addEventListener("submit", async e => {
     e.preventDefault();
-    if (!db || !detailProduct) { feedback("detailOrderFeedback", "Service indisponible. Contactez-nous sur WhatsApp.", true); return; }
+    if (!detailProduct) return;
     const quantity = Number($("detailOrderQuantity").value);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20 || quantity > Number(detailProduct.stock)) {
       feedback("detailOrderFeedback", "Quantité invalide. Stock disponible : " + detailProduct.stock + ".", true); return;
@@ -169,19 +169,16 @@
     if (form.elements.website?.value || !validateOrderForm(form, order, "detailOrderFeedback")) return;
     const button = $("detailOrderSubmit");
     const whatsappWindow = window.open("about:blank", "_blank");
-    button.disabled = true; button.textContent = "Enregistrement…";
+    button.disabled = true; button.textContent = "Préparation…";
     let saved = false;
-    try {
-      const { error } = await db.from("orders").insert(order);
-      if (error) throw error;
-      saved = true;
-    } catch (err) {
-      console.error("Order insert failed:", err);
-      feedback("detailOrderFeedback", "Enregistrement impossible : envoi uniquement par WhatsApp.", true);
-    } finally { button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp"; }
+    if (db) {
+      try { const { error } = await db.from("orders").insert(order); if (error) throw error; saved = true; }
+      catch (err) { console.error("Order insert failed:", err); }
+    }
     const url = orderWhatsAppUrl(order);
     if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
-    if (saved) feedback("detailOrderFeedback", "Commande enregistrée. Finalisez l’envoi dans WhatsApp.");
+    button.disabled = false; button.textContent = "Enregistrer et ouvrir WhatsApp";
+    feedback("detailOrderFeedback", saved ? "Commande enregistrée. Finalisez l’envoi dans WhatsApp." : "La demande sera transmise directement dans WhatsApp. Vérifiez l’envoi du message.", !saved);
   });
 
   function renderOrderOptions(selectedId = "") {
@@ -233,7 +230,6 @@
     renderProducts(); renderOrderOptions();
   }
   function openOrder(productId = "") {
-    if (!db) { toast("La boutique doit d'abord être connectée à Supabase."); return; }
     renderOrderOptions(productId);
     feedback("orderFeedback", "");
     openDialog("orderDialog");
@@ -243,7 +239,6 @@
   $("orderForm").addEventListener("submit", async e => {
     e.preventDefault();
     const form = $("orderForm");
-    if (!db) { feedback("orderFeedback", "Service indisponible. Contactez-nous sur WhatsApp.", true); return; }
     if (form.elements.website?.value) return;
     const product = products.find(p => String(p.id) === String($("orderProduct").value));
     if (!product) { feedback("orderFeedback", "Veuillez choisir un produit.", true); return; }
@@ -257,19 +252,17 @@
     if (!validateOrderForm(form, order, "orderFeedback")) return;
     const submit = form.querySelector('[type="submit"]');
     const whatsappWindow = window.open("about:blank", "_blank");
-    submit.disabled = true; submit.textContent = "Enregistrement…";
+    submit.disabled = true; submit.textContent = "Préparation…";
     let saved = false;
-    try {
-      const { error } = await db.from("orders").insert(order);
-      if (error) throw error;
-      saved = true;
-    } catch (err) {
-      console.error("Order insert failed:", err);
-      feedback("orderFeedback", "Enregistrement impossible : envoi uniquement par WhatsApp.", true);
-    } finally { submit.disabled = false; submit.textContent = "Enregistrer et ouvrir WhatsApp"; }
+    if (db) {
+      try { const { error } = await db.from("orders").insert(order); if (error) throw error; saved = true; }
+      catch (err) { console.error("Order insert failed:", err); }
+    }
     const url = orderWhatsAppUrl(order);
     if (whatsappWindow) whatsappWindow.location.href = url; else window.location.href = url;
+    submit.disabled = false; submit.textContent = "Enregistrer et ouvrir WhatsApp";
     if (saved) { closeDialog("orderDialog"); form.reset(); toast("Commande enregistrée. Finalisez l’envoi dans WhatsApp."); }
+    else feedback("orderFeedback", "La demande sera transmise directement dans WhatsApp. Vérifiez l’envoi du message.", true);
   });
 
   async function refreshSession() {
@@ -470,6 +463,7 @@
   document.addEventListener("click", e => {
     if (!nav.contains(e.target) && !menuToggle.contains(e.target)) setMenuOpen(false);
   });
+  if (cfg.HERO_IMAGE_URL && safeImageUrl(cfg.HERO_IMAGE_URL)) $("signatureImage").src = safeImageUrl(cfg.HERO_IMAGE_URL);
   loadProducts().then(() => {
     const productId = new URLSearchParams(window.location.search).get("produit");
     if (productId) showProductDetail(productId, false);
