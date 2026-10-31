@@ -48,3 +48,5 @@ button:disabled{opacity:.48;cursor:not-allowed;transform:none!important}
 .stock{font-weight:600}
 .floating-whatsapp{position:fixed;right:18px;bottom:72px;z-index:8;background:#198754;color:#fff;border-radius:999px;padding:13px 17px;font-weight:700;box-shadow:0 5px 20px #0002}
 @media(prefers-reduced-motion:reduce){.skeleton-card{animation:none}}
+
+.hp-field{position:absolute!important;left:-10000px!important;width:1px;height:1px;overflow:hidden}
