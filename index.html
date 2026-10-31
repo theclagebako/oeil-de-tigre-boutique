@@ -4,13 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171717">
-  <meta name="description" content="Découvrez la collection de bracelets en pierres naturelles Œil de Tigre. Commandez directement sur WhatsApp.">
+  <meta name="description" content="Découvrez les bracelets Œil de Tigre en pierres naturelles. Prix en USD et estimation en CDF, commande directe sur WhatsApp.">
+  <meta property="og:site_name" content="Œil de Tigre">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Œil de Tigre — Bracelets en pierres naturelles">
+  <meta property="og:description" content="Découvrez notre collection et commandez directement sur WhatsApp.">
+  <meta property="og:url" content="https://oeil-de-tigre-boutique.netlify.app/">
+  <meta name="twitter:card" content="summary_large_image">
   <title>Œil de Tigre — Bijoux élégants</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="/styles.css">\n  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/config.js"></script>
   <script defer src="/app.js"></script>
 </head>
@@ -76,7 +82,7 @@
         <div><p class="eyebrow">TROUVEZ VOTRE STYLE</p><h2>Notre collection</h2></div>
         <p>Découvrez les modèles disponibles et choisissez celui qui vous ressemble.</p>
       </div>
-      <div id="productGrid" class="product-grid">
+      <div id="productGrid" class="product-grid" aria-live="polite">
         <div class="loading-card">Chargement de la collection…</div>
       </div>
       <p class="status-message" id="catalogStatus" role="status"></p>
@@ -166,7 +172,7 @@
     </div>
   </dialog>
 
-  <button class="admin-shortcut" id="adminShortcut" aria-label="Ouvrir l'administration" title="Administration">⚙</button>
+  <a class="floating-whatsapp" href="https://wa.me/243818616951" target="_blank" rel="noopener" aria-label="Contacter Œil de Tigre sur WhatsApp">WhatsApp</a>\n  <button class="admin-shortcut" id="adminShortcut" aria-label="Ouvrir l'administration" title="Administration">⚙</button>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
