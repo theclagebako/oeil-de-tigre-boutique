@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://oeil-de-tigre-boutique.netlify.app/sitemap.xml
