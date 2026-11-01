@@ -1,0 +1,51 @@
+-- ZANDONOVA DIGITAL STORE: isolated schema; historical Œil de Tigre tables remain untouched.
+create extension if not exists pgcrypto;
+create table public.zando_admins(user_id uuid primary key references auth.users(id) on delete cascade,created_at timestamptz not null default now());
+insert into public.zando_admins(user_id) select user_id from public.admin_users on conflict(user_id) do nothing;
+create table public.zando_categories(id uuid primary key default gen_random_uuid(),name text not null unique,slug text not null unique,description text not null default '',sort_order integer not null default 0,created_at timestamptz not null default now());
+create table public.zando_products(id uuid primary key default gen_random_uuid(),category_id uuid references public.zando_categories(id) on delete set null,title text not null check(char_length(title) between 3 and 140),slug text not null unique,short_description text not null default '' check(char_length(short_description)<=220),description text not null default '',price_usd numeric(10,2) not null default 0 check(price_usd>=0),price_cdf numeric(14,2) not null default 0 check(price_cdf>=0),cover_path text,file_path text,is_published boolean not null default false,is_featured boolean not null default false,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create index zando_products_public_idx on public.zando_products(is_published,is_featured,created_at desc);
+create index zando_products_category_idx on public.zando_products(category_id);
+create table public.zando_orders(id uuid primary key default gen_random_uuid(),customer_name text not null check(char_length(customer_name) between 2 and 120),customer_phone text not null check(char_length(customer_phone) between 7 and 35),customer_city text not null check(char_length(customer_city) between 2 and 100),payment_method text not null check(payment_method in('M-Pesa','Orange Money','Airtel Money','Autre')),currency text not null check(currency in('USD','CDF')),total_usd numeric(12,2) not null default 0,total_cdf numeric(14,2) not null default 0,customer_note text not null default '' check(char_length(customer_note)<=500),status text not null default 'pending' check(status in('pending','payment_review','paid','delivered','cancelled')),created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create index zando_orders_created_idx on public.zando_orders(created_at desc);
+create index zando_orders_status_idx on public.zando_orders(status,created_at desc);
+create table public.zando_order_items(id uuid primary key default gen_random_uuid(),order_id uuid not null references public.zando_orders(id) on delete cascade,product_id uuid references public.zando_products(id) on delete set null,product_title text not null,quantity integer not null check(quantity between 1 and 10),unit_price_usd numeric(10,2) not null check(unit_price_usd>=0),unit_price_cdf numeric(14,2) not null check(unit_price_cdf>=0),created_at timestamptz not null default now());
+create index zando_order_items_order_idx on public.zando_order_items(order_id);
+create or replace function public.zando_is_admin() returns boolean language sql stable security definer set search_path=public as $$ select exists(select 1 from public.zando_admins where user_id=(select auth.uid())); $$;
+alter table public.zando_admins enable row level security;
+alter table public.zando_categories enable row level security;
+alter table public.zando_products enable row level security;
+alter table public.zando_orders enable row level security;
+alter table public.zando_order_items enable row level security;
+create policy "zando admins read own membership" on public.zando_admins for select to authenticated using(user_id=(select auth.uid()));
+create policy "zando categories public read" on public.zando_categories for select to anon,authenticated using(true);
+create policy "zando categories admin manage" on public.zando_categories for all to authenticated using(public.zando_is_admin()) with check(public.zando_is_admin());
+create policy "zando products public published read" on public.zando_products for select to anon,authenticated using(is_published=true or public.zando_is_admin());
+create policy "zando products admin manage" on public.zando_products for all to authenticated using(public.zando_is_admin()) with check(public.zando_is_admin());
+create policy "zando orders admin read" on public.zando_orders for select to authenticated using(public.zando_is_admin());
+create policy "zando orders admin update" on public.zando_orders for update to authenticated using(public.zando_is_admin()) with check(public.zando_is_admin());
+create policy "zando order items admin read" on public.zando_order_items for select to authenticated using(public.zando_is_admin());
+create or replace function public.zando_create_order(p_customer_name text,p_customer_phone text,p_customer_city text,p_payment_method text,p_currency text,p_customer_note text,p_items jsonb) returns uuid language plpgsql security definer set search_path=public as $$
+declare v_order_id uuid;v_item jsonb;v_product public.zando_products%rowtype;v_qty integer;v_usd numeric(12,2):=0;v_cdf numeric(14,2):=0;
+begin
+if length(trim(coalesce(p_customer_name,''))) not between 2 and 120 or length(trim(coalesce(p_customer_phone,''))) not between 7 and 35 or length(trim(coalesce(p_customer_city,''))) not between 2 and 100 then raise exception 'Veuillez vérifier votre nom, téléphone et ville.';end if;
+if p_payment_method not in('M-Pesa','Orange Money','Airtel Money','Autre') or p_currency not in('USD','CDF') then raise exception 'Mode de paiement ou devise invalide.';end if;
+if jsonb_typeof(p_items)<>'array' or jsonb_array_length(p_items) not between 1 and 20 then raise exception 'Le panier est vide ou contient trop de produits.';end if;
+insert into public.zando_orders(customer_name,customer_phone,customer_city,payment_method,currency,customer_note) values(trim(p_customer_name),trim(p_customer_phone),trim(p_customer_city),p_payment_method,p_currency,left(coalesce(p_customer_note,''),500)) returning id into v_order_id;
+for v_item in select value from jsonb_array_elements(p_items) loop
+v_qty:=(v_item->>'quantity')::integer;if v_qty not between 1 and 10 then raise exception 'Quantité invalide.';end if;
+select * into v_product from public.zando_products where id=(v_item->>'product_id')::uuid and is_published=true;
+if not found then raise exception 'Un produit du panier n’est plus disponible.';end if;
+if v_product.file_path is null then raise exception 'Un produit du panier n’est pas encore prêt à être livré.';end if;
+v_usd:=v_usd+v_product.price_usd*v_qty;v_cdf:=v_cdf+v_product.price_cdf*v_qty;
+insert into public.zando_order_items(order_id,product_id,product_title,quantity,unit_price_usd,unit_price_cdf) values(v_order_id,v_product.id,v_product.title,v_qty,v_product.price_usd,v_product.price_cdf);
+end loop;
+update public.zando_orders set total_usd=v_usd,total_cdf=v_cdf where id=v_order_id;return v_order_id;
+end;$$;
+revoke all on function public.zando_create_order(text,text,text,text,text,text,jsonb) from public;
+grant execute on function public.zando_create_order(text,text,text,text,text,text,jsonb) to anon,authenticated;
+insert into public.zando_categories(name,slug,description,sort_order) values('Business & Entrepreneuriat','business','Des guides pratiques pour lancer et développer une activité.',1),('Marketing & Vente','marketing','Apprendre à promouvoir et vendre en ligne.',2),('Informatique & Technologie','technologie','Des compétences numériques accessibles.',3),('Éducation & Formation','education','Des ressources pour apprendre et progresser.',4),('Développement personnel','developpement-personnel','Organisation, finances personnelles et productivité.',5) on conflict(slug) do nothing;
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('zandonova-covers','zandonova-covers',true,5242880,array['image/jpeg','image/png','image/webp']),('zandonova-ebooks','zandonova-ebooks',false,20971520,array['application/pdf']) on conflict(id) do nothing;
+create policy "zando cover images public read" on storage.objects for select to anon,authenticated using(bucket_id='zandonova-covers');
+create policy "zando admins manage covers" on storage.objects for all to authenticated using(bucket_id='zandonova-covers' and public.zando_is_admin()) with check(bucket_id='zandonova-covers' and public.zando_is_admin());
+create policy "zando admins manage ebook files" on storage.objects for all to authenticated using(bucket_id='zandonova-ebooks' and public.zando_is_admin()) with check(bucket_id='zandonova-ebooks' and public.zando_is_admin());

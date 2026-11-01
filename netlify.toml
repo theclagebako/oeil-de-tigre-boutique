@@ -11,4 +11,9 @@
 [[headers]]
   for = "/config.js"
   [headers.values]
-    Cache-Control = "no-store"
+    Cache-Control = "no-cache"
+
+[[redirects]]
+  from = "/admin"
+  to = "/admin.html"
+  status = 200
