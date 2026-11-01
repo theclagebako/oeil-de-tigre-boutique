@@ -20,6 +20,7 @@ Les tables Zandonova utilisent le préfixe `zando_*`; les tables historiques Œi
 Migrations :
 - `supabase/migrations/20261101000000_zandonova_digital_store.sql`
 - `supabase/migrations/20261101001000_zandonova_rls_policy_hardening.sql`
+- `supabase/migrations/20261101002000_zandonova_rpc_validation_and_seed.sql`
 
 Buckets :
 - `zandonova-covers` : couvertures publiques.
@@ -32,6 +33,8 @@ Buckets :
 4. Les inscriptions publiques ne sont pas activées.
 
 Pour autoriser un autre compte, créez-le dans Supabase Authentication puis ajoutez son UUID à `public.zando_admins`.
+
+Cinq fiches produits de départ sont préchargées en brouillon. Elles ne sont pas visibles aux visiteurs tant que les prix USD/CDF, la couverture et le PDF ne sont pas renseignés et que la publication n'est pas activée.
 
 ## Gestion des ebooks
 Dans l'administration, ajoutez titre, catégorie, résumé, description, prix USD/CDF, couverture et PDF. Un ebook doit posséder un PDF avant publication. Limites : 5 Mo pour une couverture et 20 Mo pour un PDF.
